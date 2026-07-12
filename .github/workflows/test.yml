@@ -35,6 +35,19 @@ jobs:
         run: python3 tests/test_bridge.py
       - name: Deep suite (42)
         run: python3 tests/test_deep.py
+      - name: R row debug (raw selftest output)
+        run: |
+          export SYM_HOME="$GITHUB_WORKSPACE"
+          Rscript -e 'cat("jsonlite:", as.character(packageVersion("jsonlite")), "\n")'
+          Rscript clients/r/sym.R || true
+          python3 - << 'PYEOF'
+          import subprocess, os, sys
+          env = {**os.environ, "SYM_HOME": os.environ["GITHUB_WORKSPACE"]}
+          r = subprocess.run(["Rscript", "clients/r/sym.R"], env=env,
+                             capture_output=True, text=True, cwd="examples")
+          print("STDOUT:", repr(r.stdout))
+          print("STDERR:", repr(r.stderr[-2000:]))
+          PYEOF
       - name: THE MATRIX (80 cells)
         run: python3 tests/test_matrix.py
       - name: Showcase (10 languages)

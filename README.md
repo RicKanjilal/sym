@@ -1,5 +1,7 @@
 <div align="center">
 
+[![battery](https://github.com/RicKanjilal/sym/actions/workflows/test.yml/badge.svg)](https://github.com/RicKanjilal/sym/actions/workflows/test.yml)
+
 # Sym ⚡
 
 ### *The polyglot host. One file, ten ecosystems — none of them know the others exist.*

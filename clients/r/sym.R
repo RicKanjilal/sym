@@ -77,13 +77,13 @@ sym_request <- function(msg) {
 }
 
 sym_import <- function(lang, target) sym_request(list(op = "import", lang = lang, target = target))
-sym_call   <- function(lang, target, args = list()) sym_request(list(op = "call", lang = lang, target = target, args = .sym_unwrap(args)))
-sym_new    <- function(lang, target, args = list()) sym_request(list(op = "new", lang = lang, target = target, args = .sym_unwrap(args)))
+sym_call   <- function(lang, target, args = list()) sym_request(list(op = "call", lang = lang, target = target, args = I(.sym_unwrap(args))))
+sym_new    <- function(lang, target, args = list()) sym_request(list(op = "new", lang = lang, target = target, args = I(.sym_unwrap(args))))
 sym_block  <- function(lang, code) sym_request(list(op = "exec", lang = lang, code = code))
 sym_c_call <- function(lib_fn, args, ret = "int", argtypes = list())
-  sym_request(list(op = "call", lang = "c", target = lib_fn, args = args, ret = ret, argtypes = argtypes))
+  sym_request(list(op = "call", lang = "c", target = lib_fn, args = I(args), ret = ret, argtypes = I(argtypes)))
 h_call     <- function(h, method, args = list())
-  sym_request(list(op = "hcall", lang = h$runtime, handle = h$id, method = method, args = .sym_unwrap(args)))
+  sym_request(list(op = "hcall", lang = h$runtime, handle = h$id, method = method, args = I(.sym_unwrap(args))))
 sym_close  <- function() {
   if (!.sym$up) return(invisible())
   try(sym_request(list(op = "shutdown")), silent = TRUE)

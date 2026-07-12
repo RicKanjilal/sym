@@ -141,8 +141,12 @@ def _handle_c(msg):
         if lib_name not in C_LIBS:
             C_LIBS[lib_name] = c_import(lib_name)
         args = msg.get("args") or []
+        if not isinstance(args, list):   # some serializers unbox 1-elem lists
+            args = [args]
         # JSON can't tell 2.0 from 2 (PHP/Perl strip the .0) — argtypes settle it
         argtypes = msg.get("argtypes") or []
+        if isinstance(argtypes, str):
+            argtypes = [argtypes]
         coerced = []
         for i, a in enumerate(args):
             t = argtypes[i] if i < len(argtypes) else None

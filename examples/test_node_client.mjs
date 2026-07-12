@@ -8,10 +8,14 @@ const lst = await AL.new();
 await lst.add("from"); await lst.add("node");
 console.log("handle:", await lst.size(), await lst.get(1));
 
-await sym.block("ruby", 'sym["x"] = "ruby via node client"');
-console.log("shared:", await sym.get("x"));
-
-console.log("cross:", await sym.call("php", "strrev", ["middleware"]));
+const have = await sym.request({ op: "runtimes", lang: "" });
+if (have.ruby) {
+  await sym.block("ruby", 'sym["x"] = "ruby via node client"');
+  console.log("shared:", await sym.get("x"));
+} else console.log("shared: (ruby not installed — skip)");
+if (have.php) {
+  console.log("cross:", await sym.call("php", "strrev", ["middleware"]));
+} else console.log("cross: (php not installed — skip)");
 
 await sym.close();
 console.log("NODE CLIENT ALIVE");

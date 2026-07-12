@@ -242,6 +242,13 @@ def main():
             elif op == "free":
                 EXPORTED.pop((lang, msg.get("handle")), None)
                 send({"id": mid, "ok": True, "value": True})
+            elif op == "runtimes":
+                import shutil as _sh
+                send({"id": mid, "ok": True, "value": {
+                    "java": bool(_sh.which("java")), "js": bool(_sh.which("node")),
+                    "python": True, "php": bool(_sh.which("php")),
+                    "ruby": bool(_sh.which("ruby")), "r": bool(_sh.which("Rscript")),
+                    "perl": bool(_sh.which("perl")), "c": True}})
             elif op == "registry":
                 from bridge.extras import _registry
                 send({"id": mid, "ok": True,

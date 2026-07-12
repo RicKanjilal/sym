@@ -5,6 +5,8 @@
 set -e
 cd "$(dirname "$0")"
 export SYM_HOME="${SYM_HOME:-$HOME/.sym}"
+# self-sufficient: `import sym` resolves from the repo, no install needed
+export PYTHONPATH="$(cd .. && pwd)/clients/python:$PYTHONPATH"
 line() { echo; echo "════ $1 ════"; }
 
 line "SYM (the home language)"

@@ -29,6 +29,7 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y -q php-cli ruby r-base-core rustc gcc
           sudo Rscript -e 'install.packages("jsonlite", repos="https://cloud.r-project.org")'
+          python3 -m pip install numpy --break-system-packages || python3 -m pip install numpy
       - name: Language core (19)
         run: python3 tests/test_compiler.py
       - name: Bridge suite (21)

@@ -1,0 +1,8 @@
+[package]
+name = "sym-bridge"
+version = "0.2.0"
+edition = "2021"
+description = "Sym client for Rust - use any language's libraries from Rust"
+license = "MIT"
+repository = "https://github.com/RicKanjilal/sym"
+# Publish: mkdir src && cp ../../clients/rust/sym_lib.rs src/lib.rs && cargo publish

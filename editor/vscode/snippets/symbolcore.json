@@ -1,0 +1,92 @@
+{
+  "Function": {
+    "prefix": "fn",
+    "body": ["fn ${1:name}(${2:params}) -> ${3:int}", "    ${0}"],
+    "description": "Function"
+  },
+  "Function expression": {
+    "prefix": "fne",
+    "body": "fn ${1:name}(${2:x}: ${3:int}) -> ${4:int} => ${0}",
+    "description": "Expression function"
+  },
+  "Let": {
+    "prefix": "let",
+    "body": "let ${1:name} = ${0}",
+    "description": "Variable"
+  },
+  "Const": {
+    "prefix": "const",
+    "body": "const ${1:NAME} = ${0}",
+    "description": "Constant"
+  },
+  "If": {
+    "prefix": "if",
+    "body": ["if ${1:condition}", "    ${0}"],
+    "description": "If"
+  },
+  "If Else": {
+    "prefix": "ife",
+    "body": ["if ${1:condition}", "    ${2}", "else", "    ${0}"],
+    "description": "If/else"
+  },
+  "For range": {
+    "prefix": "for",
+    "body": ["for ${1:i} in ${2:0}..${3:10}", "    ${0}"],
+    "description": "For range"
+  },
+  "For each": {
+    "prefix": "fore",
+    "body": ["for ${1:item} in ${2:collection}", "    ${0}"],
+    "description": "For each"
+  },
+  "While": {
+    "prefix": "while",
+    "body": ["while ${1:condition}", "    ${0}"],
+    "description": "While"
+  },
+  "Print": {
+    "prefix": "pr",
+    "body": "print \"${0}\"",
+    "description": "Print"
+  },
+  "Struct": {
+    "prefix": "struct",
+    "body": ["struct ${1:Name}", "    ${2:field}: ${3:type}", "", "    fn ${4:method}(self)", "        ${0}"],
+    "description": "Struct"
+  },
+  "Import Python": {
+    "prefix": "impy",
+    "body": "import py.${1:numpy} as ${2:np}",
+    "description": "Import Python lib"
+  },
+  "Match": {
+    "prefix": "match",
+    "body": ["match ${1:value}", "    ${2:pattern} => ${3:action}", "    _ => ${0}"],
+    "description": "Match"
+  },
+  "Try Catch": {
+    "prefix": "try",
+    "body": ["try", "    ${1}", "catch ${2:e}", "    ${0}"],
+    "description": "Try/catch"
+  },
+  "Lambda": {
+    "prefix": "lam",
+    "body": "(${1:x}) => ${0}",
+    "description": "Lambda"
+  },
+  "Benchmark": {
+    "prefix": "bench",
+    "body": ["benchmark fn ${1:test}()", "    ${0}", "", "${1:test}()"],
+    "description": "Benchmark"
+  },
+  "Symbol header": {
+    "prefix": "#symbol",
+    "body": "#symbol",
+    "description": "Symbol mode"
+  },
+  "Compact header": {
+    "prefix": "#compact",
+    "body": "#compact",
+    "description": "Compact mode"
+  }
+}

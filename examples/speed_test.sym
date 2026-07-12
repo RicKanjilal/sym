@@ -1,0 +1,55 @@
+# Sym — Speed Test
+# Compare: sym run speed_test.sym (Python)
+#    vs:   sym build -t native speed_test.sym && ./speed_test (C)
+
+fn fibonacci(n: int) -> int
+    if n <= 1
+        return n
+    return fibonacci(n - 1) + fibonacci(n - 2)
+
+fn sum_squares(n: int) -> int
+    let total = 0
+    for i in 0..n
+        total += i * i
+    return total
+
+fn is_prime(n: int) -> int
+    if n < 2
+        return 0
+    let i = 2
+    while i * i <= n
+        if n % i == 0
+            return 0
+        i += 1
+    return 1
+
+fn count_primes(limit: int) -> int
+    let count = 0
+    for n in 2..limit
+        if is_prime(n) == 1
+            count += 1
+    return count
+
+fn sort_test() -> int
+    let data = [64, 34, 25, 12, 22, 11, 90, 45, 78, 33, 55, 1, 99, 42, 7, 88]
+    sort data
+    return data[0]
+
+# === Run benchmarks ===
+print "Sym Speed Test"
+print "====================="
+
+let fib_result = fibonacci(35)
+print "fib(35) = {fib_result}"
+
+let sq_result = sum_squares(1000000)
+print "sum_squares(1M) = {sq_result}"
+
+let prime_count = count_primes(100000)
+print "primes below 100K = {prime_count}"
+
+let sort_result = sort_test()
+print "sort_test min = {sort_result}"
+
+print "====================="
+print "Done!"

@@ -1,0 +1,47 @@
+# Sym — Hybrid Demo
+# Pure functions → C (fast). Python libs → Python (ecosystem).
+# Run: sym run hybrid_demo.sym -v
+
+import py.json as json
+
+# These functions are PURE — no Python deps → compiled to C
+fn fibonacci(n: int) -> int
+    if n <= 1
+        return n
+    return fibonacci(n - 1) + fibonacci(n - 2)
+
+fn is_prime(n: int) -> int
+    if n < 2
+        return 0
+    let i = 2
+    while i * i <= n
+        if n % i == 0
+            return 0
+        i += 1
+    return 1
+
+fn count_primes(limit: int) -> int
+    let count = 0
+    for n in 2..limit
+        if is_prime(n) == 1
+            count += 1
+    return count
+
+fn sum_cubes(n: int) -> int
+    let total = 0
+    for i in 1..n
+        total += i * i * i
+    return total
+
+# This stays as PYTHON — uses json library
+fn show_results()
+    let fib_val = fibonacci(35)
+    let prime_count = count_primes(100000)
+    let cubes = sum_cubes(1000)
+
+    let results = {"fibonacci_35": fib_val, "primes_under_100k": prime_count, "sum_cubes_1000": cubes}
+    print json.dumps(results, indent=2)
+
+    print "Done! The math ran as native C, the JSON was Python."
+
+show_results()

@@ -1,0 +1,81 @@
+# Sym — Hello World + Basics Demo
+
+print "Hello from Sym! ⚡"
+print "========================="
+
+# Variables
+let name = "Abir"
+let age = 28
+let score = 95.5
+print "Name: {name}, Age: {age}, Score: {score}"
+
+# Constants
+const PI = 3.14159
+const MAX_SIZE = 1000
+print "PI = {PI}"
+
+# Lists and sort
+let numbers = [64, 34, 25, 12, 22, 11, 90]
+print "Before sort: {numbers}"
+sort numbers
+print "After sort:  {numbers}"
+
+# Functions
+fn factorial(n: int) -> int
+    if n <= 1
+        return 1
+    return n * factorial(n - 1)
+
+fn fibonacci(n: int) -> int
+    if n <= 1
+        return n
+    return fibonacci(n - 1) + fibonacci(n - 2)
+
+print "factorial(10) = {factorial(10)}"
+print "fibonacci(10) = {fibonacci(10)}"
+
+# Higher-order functions
+let data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+let squares = map(data, (x) => x * x)
+let evens = filter(data, (x) => x % 2 == 0)
+print "Squares: {squares}"
+print "Evens: {evens}"
+
+# String interpolation
+let greeting = "Hello, {name}! You scored {score}%"
+print greeting
+
+# Control flow
+fn grade(score: float) -> str
+    if score >= 90
+        return "A"
+    elif score >= 80
+        return "B"
+    elif score >= 70
+        return "C"
+    else
+        return "F"
+
+print "Grade for {score}: {grade(score)}"
+
+# For loops
+print "Counting:"
+for i in 0..5
+    print "  {i}"
+
+# Structs
+struct Point
+    x: float
+    y: float
+
+    fn distance(self, other: Point) -> float
+        let dx = self.x - other.x
+        let dy = self.y - other.y
+        return sqrt(dx * dx + dy * dy)
+
+let p1 = Point(0.0, 0.0)
+let p2 = Point(3.0, 4.0)
+print "Distance: {p1.distance(p2)}"
+
+print "========================="
+print "✅ All examples passed!"

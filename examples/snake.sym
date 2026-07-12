@@ -1,0 +1,232 @@
+#symbol
+# ⚡ Sym Snake Game — Symbol Mode 🐍
+# Run: sym run snake.sym
+# Make sure your terminal is at least 60x28
+
+⊂ py.curses as curses
+⊂ py.random as random
+
+ƒ game(stdscr)
+    # Setup
+    curses.curs_set(0)
+    stdscr.nodelay(1)
+    stdscr.timeout(100)
+    curses.start_color()
+    curses.use_default_colors()
+    curses.init_pair(1, curses.COLOR_GREEN, -1)
+    curses.init_pair(2, curses.COLOR_RED, -1)
+    curses.init_pair(3, curses.COLOR_YELLOW, -1)
+    curses.init_pair(4, curses.COLOR_CYAN, -1)
+    curses.init_pair(5, curses.COLOR_MAGENTA, -1)
+    curses.init_pair(6, curses.COLOR_WHITE, -1)
+
+    # Get terminal size and adapt
+    ∂ max_y = stdscr.getmaxyx()[0]
+    ∂ max_x = stdscr.getmaxyx()[1]
+
+    # Game area — fit inside terminal
+    ∂ H = max_y - 6
+    ∂ W = max_x - 6
+    ? H < 10
+        H = 10
+    ? W < 20
+        W = 20
+    ? H > 30
+        H = 30
+    ? W > 60
+        W = 60
+
+    # Create game window centered
+    ∂ start_y = 2
+    ∂ start_x = (max_x - W - 2) // 2
+    ? start_x < 0
+        start_x = 0
+
+    ∂ win = curses.newwin(H + 2, W + 2, start_y, start_x)
+    win.keypad(1)
+    win.timeout(120)
+    win.border(0)
+
+    # Snake starts in middle — 5 segments
+    ∂ snake = []
+    ∂ mid_y = H // 2
+    ∂ mid_x = W // 4
+    snake.append([mid_y, mid_x + 4])
+    snake.append([mid_y, mid_x + 3])
+    snake.append([mid_y, mid_x + 2])
+    snake.append([mid_y, mid_x + 1])
+    snake.append([mid_y, mid_x])
+
+    # Direction: moving right
+    ∂ dy = 0
+    ∂ dx = 1
+
+    # Place first food
+    ∂ food_y = H // 2
+    ∂ food_x = W // 2
+    win.addch(food_y, food_x, 42, curses.color_pair(2))
+
+    # State
+    ∂ score = 0
+    ∂ speed = 120
+    ∂ alive = 1
+
+    # Draw initial snake
+    ∀ i in range(0, len(snake))
+        ∂ seg = snake[i]
+        ? i == 0
+            win.addch(seg[0], seg[1], 64, curses.color_pair(3))
+        !
+            win.addch(seg[0], seg[1], 111, curses.color_pair(1))
+
+    # Title — draw on stdscr above the game window
+    ∂ title = "SYMBOLCORE SNAKE"
+    ∂ tx = (max_x - len(title)) // 2
+    ? tx < 0
+        tx = 0
+    ? max_y > start_y
+        stdscr.addstr(0, tx, title, curses.color_pair(4))
+    ∂ score_x = start_x + W + 2 - 12
+    ? score_x < 0
+        score_x = 0
+    ? max_y > 1
+        stdscr.addstr(1, start_x, "Score: 0", curses.color_pair(3))
+
+    # Help text below game
+    ∂ help_y = start_y + H + 3
+    ? help_y < max_y
+        stdscr.addstr(help_y, start_x, "Arrows:move P:pause Q:quit", curses.color_pair(6))
+    stdscr.refresh()
+
+    # ═══ Game Loop ═══
+    ⟳ alive == 1
+        ∂ key = win.getch()
+
+        # Quit
+        ? key == 113
+            alive = 0
+
+        # Pause
+        ? key == 112
+            win.addstr(H // 2, W // 2 - 3, "PAUSED", curses.color_pair(3))
+            win.refresh()
+            win.timeout(-1)
+            ∂ pk = win.getch()
+            win.timeout(speed)
+            ? pk == 113
+                alive = 0
+
+        # Direction — prevent reversing
+        ? key == curses.KEY_UP
+            ? dy ≠ 1
+                dy = -1
+                dx = 0
+        ? key == curses.KEY_DOWN
+            ? dy ≠ -1
+                dy = 1
+                dx = 0
+        ? key == curses.KEY_LEFT
+            ? dx ≠ 1
+                dy = 0
+                dx = -1
+        ? key == curses.KEY_RIGHT
+            ? dx ≠ -1
+                dy = 0
+                dx = 1
+
+        # New head position
+        ∂ head = snake[0]
+        ∂ new_h = head[0] + dy
+        ∂ new_w = head[1] + dx
+
+        # Wall wrap
+        ? new_h <= 0
+            new_h = H
+        ? new_h >= H + 1
+            new_h = 1
+        ? new_w <= 0
+            new_w = W
+        ? new_w >= W + 1
+            new_w = 1
+
+        ∂ new_head = [new_h, new_w]
+
+        # Self collision
+        ∀ seg in snake
+            ? seg[0] == new_head[0]
+                ? seg[1] == new_head[1]
+                    alive = 0
+
+        ? alive == 0
+            ∂ x = 0
+        !
+            # Advance snake
+            snake.insert(0, new_head)
+
+            # Eat food?
+            ∂ ate = 0
+            ? new_head[0] == food_y
+                ? new_head[1] == food_x
+                    ate = 1
+                    score = score + 10
+
+                    # Update score
+                    ∂ stxt = "Score: " + str(score)
+                    stdscr.addstr(1, start_x, stxt, curses.color_pair(3))
+                    stdscr.refresh()
+
+                    # Speed up
+                    ? speed > 60
+                        speed = speed - 3
+                        win.timeout(speed)
+
+                    # New food
+                    ∂ placed = 0
+                    ⟳ placed == 0
+                        ∂ fy = random.randint(1, H)
+                        ∂ fx = random.randint(1, W)
+                        ∂ hit = 0
+                        ∀ s in snake
+                            ? s[0] == fy
+                                ? s[1] == fx
+                                    hit = 1
+                        ? hit == 0
+                            food_y = fy
+                            food_x = fx
+                            placed = 1
+                    win.addch(food_y, food_x, 42, curses.color_pair(2))
+
+            # Remove tail if didn't eat
+            ? ate == 0
+                ∂ tail = snake.pop()
+                win.addch(tail[0], tail[1], 32)
+
+            # Draw head and body
+            ? len(snake) > 1
+                ∂ prev = snake[1]
+                win.addch(prev[0], prev[1], 111, curses.color_pair(1))
+            win.addch(new_head[0], new_head[1], 64, curses.color_pair(3))
+
+            win.border(0)
+
+    # ═══ Game Over ═══
+    ∂ msg = "GAME OVER  Score:" + str(score)
+    ∂ mx = W // 2 - len(msg) // 2
+    ? mx < 1
+        mx = 1
+    win.addstr(H // 2, mx, msg, curses.color_pair(5))
+    win.addstr(H // 2 + 1, mx, "Press any key...", curses.color_pair(4))
+    win.refresh()
+    win.timeout(-1)
+    win.getch()
+
+    ← score
+
+# Run with curses.wrapper for safe terminal cleanup
+∂ final = curses.wrapper(game)
+⊕ ""
+⊕ "  Sym Snake - Game Over!"
+⊕ "  ─────────────────────────────"
+∂ fs = "  Final Score: " + str(final)
+⊕ fs
+⊕ ""

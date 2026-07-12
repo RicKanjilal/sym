@@ -1,0 +1,49 @@
+# ═══════════════════════════════════════════════════════
+#  SYMBRIDGE DEMO — one file, three runtimes, one host
+#  Python never talks to Java. JS never talks to Python.
+#  Everything talks to Sym. Sym brokers Symbol Objects.
+# ═══════════════════════════════════════════════════════
+
+# ── Java: import a class. Sym hosts the JVM. ──
+java.import math.Calculator
+
+let a = Calculator.add(5, 8)
+let f = Calculator.fib(50)
+print "Java  Calculator.add(5, 8)   = {a}"
+print "Java  Calculator.fib(50)     = {f}"
+
+# JDK standard library, straight from Sym:
+java.import java.lang.Math as JMath
+let p = JMath.pow(2, 16)
+print "Java  Math.pow(2, 16)        = {p}"
+
+# ── JS: import a module. Sym hosts Node. ──
+js.import textkit
+let shouted = textkit.shout("symbolcore is the host")
+print "JS    textkit.shout(...)     = {shouted}"
+
+# ── Blocks: each runs in its REAL runtime, sharing sym ──
+sym_set("numbers", [4, 8, 15, 16, 23, 42])
+
+js> {
+  const xs = sym.numbers;
+  sym.doubled = xs.map(x => x * 2);
+  sym.js_says = `processed ${xs.length} numbers in Node ${process.version}`;
+}
+
+java> {
+  java.util.List<Object> xs = (java.util.List<Object>) sym.get("doubled");
+  long total = 0;
+  for (Object x : xs) total += ((Number) x).longValue();
+  sym.put("java_total", total);
+}
+
+let js_says = sym_get("js_says")
+let doubled = sym_get("doubled")
+let total = sym_get("java_total")
+print ""
+print "shared after JS block:  {js_says}"
+print "doubled by JS:          {doubled}"
+print "summed by Java:         {total}"
+print ""
+print "one .sym file - Python, Node and the JVM, brokered by Sym"

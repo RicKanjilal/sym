@@ -1,0 +1,15 @@
+# Sym — Web Scraper Demo
+# Auto-installs requests and beautifulsoup4 if not present
+
+import py.requests as requests
+import py.json as json
+
+# Fetch a public API
+let response = requests.get("https://httpbin.org/json")
+let data = response.json()
+
+print "Status: {response.status_code}"
+print "Data received:"
+print json.dumps(data, indent=2)
+
+print "✅ Web request + auto-install working!"

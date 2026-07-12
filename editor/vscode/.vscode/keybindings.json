@@ -1,0 +1,14 @@
+[
+  {
+    "key": "f5",
+    "command": "workbench.action.tasks.runTask",
+    "args": "sym run",
+    "when": "editorLangId == symbolcore"
+  },
+  {
+    "key": "f6",
+    "command": "workbench.action.tasks.runTask",
+    "args": "sym check",
+    "when": "editorLangId == symbolcore"
+  }
+]

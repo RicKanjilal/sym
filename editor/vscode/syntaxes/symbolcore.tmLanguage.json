@@ -1,0 +1,185 @@
+{
+  "scopeName": "source.sym",
+  "name": "SymbolCore",
+  "fileTypes": ["sym"],
+  "patterns": [
+    { "include": "#directive" },
+    { "include": "#comment" },
+    { "include": "#string-double" },
+    { "include": "#string-single" },
+    { "include": "#number" },
+    { "include": "#symbol-unicode" },
+    { "include": "#compact-operators" },
+    { "include": "#keyword-control" },
+    { "include": "#keyword-declaration" },
+    { "include": "#keyword-special" },
+    { "include": "#keyword-logic" },
+    { "include": "#constant" },
+    { "include": "#builtin-function" },
+    { "include": "#builtin-constant" },
+    { "include": "#type" },
+    { "include": "#self" },
+    { "include": "#python-module" },
+    { "include": "#function-call" },
+    { "include": "#function-def" },
+    { "include": "#operator" }
+  ],
+  "repository": {
+
+    "directive": {
+      "match": "^\\s*#(compact|symbol|manual_memory|gpu)\\b",
+      "name": "keyword.preprocessor.sym"
+    },
+
+    "comment": {
+      "match": "#.*$",
+      "name": "comment.line.sym"
+    },
+
+    "string-double": {
+      "begin": "\"",
+      "end": "\"",
+      "name": "string.quoted.double.sym",
+      "patterns": [
+        { "match": "\\\\.", "name": "constant.character.escape.sym" },
+        {
+          "begin": "\\{",
+          "end": "\\}",
+          "name": "meta.interpolation.sym",
+          "beginCaptures": { "0": { "name": "punctuation.interpolation.sym" } },
+          "endCaptures": { "0": { "name": "punctuation.interpolation.sym" } },
+          "contentName": "source.sym.embedded"
+        }
+      ]
+    },
+
+    "string-single": {
+      "begin": "'",
+      "end": "'",
+      "name": "string.quoted.single.sym",
+      "patterns": [
+        { "match": "\\\\.", "name": "constant.character.escape.sym" }
+      ]
+    },
+
+    "number": {
+      "patterns": [
+        { "match": "\\b0[xX][0-9a-fA-F_]+\\b", "name": "constant.numeric.hex.sym" },
+        { "match": "\\b\\d[\\d_]*\\.[\\d_]+([eE][+-]?\\d+)?\\b", "name": "constant.numeric.float.sym" },
+        { "match": "\\b\\d[\\d_]*\\b", "name": "constant.numeric.integer.sym" }
+      ]
+    },
+
+    "symbol-unicode": {
+      "patterns": [
+        { "match": "ƒ", "name": "keyword.declaration.function.sym" },
+        { "match": "∂", "name": "keyword.declaration.variable.sym" },
+        { "match": "←", "name": "keyword.control.return.sym" },
+        { "match": "→", "name": "keyword.operator.arrow.sym" },
+        { "match": "∀", "name": "keyword.control.for.sym" },
+        { "match": "⟳", "name": "keyword.control.while.sym" },
+        { "match": "⊂", "name": "keyword.control.import.sym" },
+        { "match": "⊕", "name": "support.function.print.sym" },
+        { "match": "≠", "name": "keyword.operator.comparison.sym" },
+        { "match": "≤", "name": "keyword.operator.comparison.sym" },
+        { "match": "≥", "name": "keyword.operator.comparison.sym" },
+        { "match": "≔", "name": "keyword.operator.assignment.sym" },
+        { "match": "ℤ", "name": "support.type.sym" },
+        { "match": "ℝ", "name": "support.type.sym" },
+        { "match": "𝔹", "name": "support.type.sym" },
+        { "match": "𝕊", "name": "support.type.sym" }
+      ]
+    },
+
+    "compact-operators": {
+      "patterns": [
+        { "match": "(?<=^\\s*)>>(?=\\s)", "name": "support.function.print.sym" },
+        { "match": "(?<=^\\s*)<<(?=\\s)", "name": "keyword.control.import.sym" },
+        { "match": "(?<=^\\s*)<-(?=\\s)", "name": "keyword.control.return.sym" },
+        { "match": "(?<=^\\s*)\\?\\?(?=\\s)", "name": "keyword.control.elif.sym" },
+        { "match": "(?<=^\\s*)\\?(?=\\s)", "name": "keyword.control.if.sym" },
+        { "match": "(?<=^\\s*)!(?=\\s)", "name": "keyword.control.else.sym" },
+        { "match": "(?<=^\\s*)~~(?=\\s)", "name": "keyword.control.while.sym" },
+        { "match": "(?<=^\\s*)~(?=\\s)", "name": "keyword.control.for.sym" },
+        { "match": "(?<=^\\s*)@(?=\\s)", "name": "keyword.declaration.variable.sym" }
+      ]
+    },
+
+    "keyword-control": {
+      "match": "\\b(if|elif|else|for|while|match|try|catch|break|continue|return|in)\\b",
+      "name": "keyword.control.sym"
+    },
+
+    "keyword-declaration": {
+      "match": "\\b(fn|let|const|struct|trait|impl|import|from|as)\\b",
+      "name": "keyword.declaration.sym"
+    },
+
+    "keyword-special": {
+      "match": "\\b(benchmark|optimize)\\b",
+      "name": "keyword.other.special.sym"
+    },
+
+    "keyword-logic": {
+      "match": "\\b(and|or|not)\\b",
+      "name": "keyword.operator.logical.sym"
+    },
+
+    "constant": {
+      "patterns": [
+        { "match": "\\b(true|false|True|False)\\b", "name": "constant.language.boolean.sym" },
+        { "match": "\\b(none|None)\\b", "name": "constant.language.null.sym" }
+      ]
+    },
+
+    "builtin-function": {
+      "match": "\\b(print|sort|len|map|filter|reduce|range|enumerate|zip|type|clone|str|sqrt|sin|cos|tan|log|log2|log10|floor|ceil|abs|round|read_file|write_file|exists|input_line)(?=\\s|\\(|$)",
+      "name": "support.function.builtin.sym"
+    },
+
+    "builtin-constant": {
+      "match": "\\b(PI|E|INF)\\b",
+      "name": "constant.language.sym"
+    },
+
+    "type": {
+      "match": "\\b(int|i32|i64|float|f32|f64|bool|str|byte|void|list|dict|set)\\b",
+      "name": "support.type.sym"
+    },
+
+    "self": {
+      "match": "\\bself\\b",
+      "name": "variable.language.self.sym"
+    },
+
+    "python-module": {
+      "match": "\\bpy\\.[a-zA-Z_][a-zA-Z0-9_.]*",
+      "name": "entity.name.module.python.sym"
+    },
+
+    "function-def": {
+      "match": "(?<=fn\\s|f\\s|ƒ\\s)[a-zA-Z_]\\w*",
+      "name": "entity.name.function.definition.sym"
+    },
+
+    "function-call": {
+      "match": "\\b([a-zA-Z_]\\w*)(?=\\s*\\()",
+      "name": "entity.name.function.call.sym"
+    },
+
+    "operator": {
+      "patterns": [
+        { "match": "=>", "name": "keyword.operator.fatarrow.sym" },
+        { "match": "->", "name": "keyword.operator.arrow.sym" },
+        { "match": "\\|>", "name": "keyword.operator.pipe.sym" },
+        { "match": "\\.\\.", "name": "keyword.operator.range.sym" },
+        { "match": "\\*\\*", "name": "keyword.operator.power.sym" },
+        { "match": "//", "name": "keyword.operator.floordiv.sym" },
+        { "match": "==|!=|<=|>=|<|>", "name": "keyword.operator.comparison.sym" },
+        { "match": "\\+=|-=|\\*=|/=", "name": "keyword.operator.assignment.compound.sym" },
+        { "match": "=", "name": "keyword.operator.assignment.sym" },
+        { "match": "[+\\-*/%]", "name": "keyword.operator.arithmetic.sym" }
+      ]
+    }
+  }
+}

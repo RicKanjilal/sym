@@ -1,0 +1,13 @@
+{
+  "name": "symlang",
+  "version": "0.2.0",
+  "description": "Sym client for Node - use any language's libraries from JavaScript",
+  "type": "module",
+  "main": "sym.mjs",
+  "scripts": {
+    "postinstall": "node -e \"try{require('child_process').execSync('python3 -c \\\"import sym_lang\\\"')}catch(e){console.log('\\nSym core not found. Install it:  pip install sym-lang\\n')}\""
+  },
+  "repository": "github:RicKanjilal/sym",
+  "keywords": ["polyglot", "interop", "jvm", "python", "bridge"],
+  "license": "MIT"
+}

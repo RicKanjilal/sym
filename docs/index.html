@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SymbolCore — Complete Language Reference</title>
+<meta name="description" content="Complete specification for SymbolCore programming language. Every syntax rule, every mode, every benchmark. For developers and AI coding assistants.">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#07080c;--bg2:#0d0f16;--bg3:#13161f;--bg4:#1a1e2c;--bd:#232840;--tx:#bfc6dc;--txd:#5e6685;--txb:#e8ecf8;--ac:#00e8c6;--ac2:#8b5cf6;--ac3:#f87066;--ac4:#fbbf24;--ac5:#3b82f6;--g1:#00e8c6;--g2:#8b5cf6}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--tx);line-height:1.72;font-size:15.5px}
+::selection{background:#8b5cf640}
+.pg{max-width:880px;margin:0 auto;padding:0 20px 140px}
+
+/* Hero */
+.hero{padding:72px 0 56px;border-bottom:1px solid var(--bd);margin-bottom:56px}
+.badge{display:inline-block;padding:4px 14px;border-radius:20px;font-size:11px;font-weight:600;background:#00e8c612;color:var(--ac);border:1px solid #00e8c630;margin-bottom:14px;letter-spacing:.5px}
+.hero h1{font-size:44px;font-weight:700;color:var(--txb);line-height:1.12;margin-bottom:10px}
+.hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--g1),var(--g2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero>p{font-size:17px;color:var(--txd);max-width:620px}
+.hmeta{margin-top:18px;display:flex;flex-wrap:wrap;gap:16px;font-size:12.5px;color:var(--txd)}
+.hmeta code{background:var(--bg3);padding:2px 8px;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ac)}
+
+/* AI Box */
+.aibox{background:#00e8c607;border:1px solid #00e8c625;border-radius:12px;padding:22px 26px;margin-bottom:44px}
+.aibox h2{font-size:15px;color:var(--ac);margin-bottom:8px}
+.aibox p,.aibox li{font-size:13.5px;color:var(--tx);line-height:1.75}
+.aibox ul{margin:6px 0 0 18px}
+.aibox li{margin-bottom:3px}
+
+/* TOC */
+.toc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:22px 26px;margin-bottom:44px}
+.toc h2{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--txd);margin-bottom:12px}
+.toc-g{display:grid;grid-template-columns:1fr 1fr;gap:3px 20px}
+.toc a{color:var(--tx);text-decoration:none;font-size:13.5px;padding:3px 0;display:block}
+.toc a:hover{color:var(--ac)}
+.toc a .n{color:var(--txd);font-family:'IBM Plex Mono',monospace;font-size:11px;margin-right:5px}
+
+/* Sections */
+.s{margin-bottom:52px;scroll-margin-top:28px}
+.s>h2{font-size:26px;font-weight:700;color:var(--txb);margin-bottom:6px;padding-bottom:10px;border-bottom:1px solid var(--bd)}
+.s>h2 .tg{font-size:11px;padding:3px 10px;border-radius:12px;background:#8b5cf620;color:var(--ac2);font-weight:500;margin-left:8px;vertical-align:middle}
+.s h3{font-size:19px;font-weight:600;color:var(--txb);margin:26px 0 8px}
+.s h4{font-size:15px;font-weight:600;color:var(--ac);margin:18px 0 6px;font-family:'IBM Plex Mono',monospace}
+.s p{margin-bottom:12px}
+
+/* Code */
+pre{background:var(--bg3);border:1px solid var(--bd);border-radius:8px;padding:14px 18px;overflow-x:auto;margin:10px 0 16px;font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.65;color:var(--tx)}
+code{font-family:'IBM Plex Mono',monospace;font-size:13px}
+p code,li code,td code{background:var(--bg3);padding:1px 6px;border-radius:4px;color:var(--ac);font-size:12.5px}
+.kw{color:#ff79c6;font-weight:500}.st{color:#f1fa8c}.cm{color:#6272a4;font-style:italic}.nm{color:#bd93f9}.fn{color:#50fa7b}.op{color:#ff79c6}.bi{color:#8be9fd}.tp{color:#ffb86c}
+
+/* Tables */
+table{width:100%;border-collapse:collapse;margin:10px 0 18px;font-size:13.5px}
+th{text-align:left;padding:9px 12px;background:var(--bg3);color:var(--txb);font-weight:600;border:1px solid var(--bd);font-size:12.5px}
+td{padding:8px 12px;border:1px solid var(--bd)}
+tr:nth-child(even) td{background:var(--bg2)}
+
+/* Rule boxes */
+.r{background:var(--bg2);border-left:3px solid var(--ac);padding:12px 18px;margin:10px 0 16px;border-radius:0 8px 8px 0;font-size:13.5px}
+.r.w{border-left-color:var(--ac4)}.r.e{border-left-color:var(--ac3)}
+.r strong{color:var(--txb)}
+
+/* Benchmark card */
+.bm{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px 24px;margin:14px 0 20px}
+.bm h4{margin:0 0 12px;color:var(--txb);font-family:'Instrument Sans',sans-serif;font-size:16px}
+.bm-row{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:13.5px}
+.bm-label{min-width:140px;color:var(--txd)}
+.bm-bar{flex:1;height:20px;background:var(--bg4);border-radius:4px;overflow:hidden;position:relative}
+.bm-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:600;color:#fff;min-width:fit-content;white-space:nowrap}
+.bm-val{min-width:80px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600}
+.bm-fill.py{background:linear-gradient(90deg,#3b82f6,#6366f1)}.bm-fill.hy{background:linear-gradient(90deg,#8b5cf6,#a855f7)}.bm-fill.na{background:linear-gradient(90deg,#00e8c6,#10b981)}
+
+/* Compare columns */
+.comp{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:14px 0 20px}
+.comp-col{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:16px;overflow:hidden}
+.comp-col h4{font-size:13px;font-weight:600;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--bd);font-family:'Instrument Sans',sans-serif}
+.comp-col.normal h4{color:var(--ac5)}.comp-col.compact h4{color:var(--ac2)}.comp-col.symbol h4{color:var(--ac4)}
+.comp-col pre{font-size:11.5px;padding:10px 12px;margin:0;border:none;background:var(--bg3)}
+
+ul,ol{margin:6px 0 14px 22px}
+li{margin-bottom:5px;font-size:14.5px}
+
+@media(max-width:700px){.hero h1{font-size:30px}.toc-g{grid-template-columns:1fr}.comp{grid-template-columns:1fr}pre{font-size:11.5px;padding:10px 12px}}
+</style>
+</head>
+<body>
+<div class="pg">
+
+<!-- HERO -->
+<div class="hero">
+<div class="badge">COMPLETE LANGUAGE REFERENCE v0.2.0</div>
+<h1><em>SymbolCore</em> Documentation</h1>
+<p>Every syntax rule. Every mode. Every benchmark. One page. Built for developers and AI assistants.</p>
+<div class="hmeta">
+<span>Extension: <code>.sym</code></span>
+<span>Run: <code>sym run file.sym</code></span>
+<span>Compile: <code>sym build -t native file.sym</code></span>
+<span>Check: <code>sym check file.sym</code></span>
+</div>
+</div>
+
+<!-- AI BOX -->
+<div class="aibox">
+<h2>🤖 For AI Assistants — Read This First</h2>
+<p>When writing SymbolCore code, follow these rules exactly:</p>
+<ul>
+<li>File extension: <code>.sym</code> — always</li>
+<li>Indentation: 4 spaces — no tabs, no braces, no colons after control structures</li>
+<li>Functions: <code>fn name(param: type) -> return_type</code> — NOT <code>def</code></li>
+<li>Variables: <code>let x = value</code> — NOT bare assignment</li>
+<li>Python libs: <code>import py.numpy as np</code> — the <code>py.</code> prefix is REQUIRED</li>
+<li>Strings auto-interpolate: <code>"Hello {name}"</code> — no <code>f</code> prefix needed</li>
+<li><code>print</code> and <code>sort</code> are keywords: <code>print "hello"</code>, <code>sort data</code> — no parentheses</li>
+<li>Ranges: <code>0..100</code> — two dots, exclusive end</li>
+<li>Lambdas: <code>(x) => x * 2</code> — fat arrow, not <code>lambda</code></li>
+<li>Error handling: <code>try</code>/<code>catch</code> — NOT <code>try</code>/<code>except</code></li>
+<li>Boolean/null: <code>true</code> <code>false</code> <code>none</code> — lowercase</li>
+<li>Logic: <code>and</code> <code>or</code> <code>not</code> — words, not <code>&&</code> <code>||</code> <code>!</code></li>
+<li>No semicolons. Ever. One statement per line.</li>
+</ul>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+<h2>Contents</h2>
+<div class="toc-g">
+<a href="#s1"><span class="n">01</span>Overview</a>
+<a href="#s2"><span class="n">02</span>Variables & Constants</a>
+<a href="#s3"><span class="n">03</span>Type System</a>
+<a href="#s4"><span class="n">04</span>Functions</a>
+<a href="#s5"><span class="n">05</span>Control Flow</a>
+<a href="#s6"><span class="n">06</span>Loops & Ranges</a>
+<a href="#s7"><span class="n">07</span>Strings & Interpolation</a>
+<a href="#s8"><span class="n">08</span>Collections</a>
+<a href="#s9"><span class="n">09</span>Structs & Methods</a>
+<a href="#s10"><span class="n">10</span>Traits & Impl</a>
+<a href="#s11"><span class="n">11</span>Python Interop</a>
+<a href="#s12"><span class="n">12</span>Built-in Functions</a>
+<a href="#s13"><span class="n">13</span>Error Handling</a>
+<a href="#s14"><span class="n">14</span>Pattern Matching</a>
+<a href="#s15"><span class="n">15</span>Lambdas & Pipes</a>
+<a href="#s16"><span class="n">16</span>Benchmark & Optimize</a>
+<a href="#s17"><span class="n">17</span>All Three Syntax Modes</a>
+<a href="#s18"><span class="n">18</span>Compact Mode Reference</a>
+<a href="#s19"><span class="n">19</span>Symbol Mode Reference</a>
+<a href="#s20"><span class="n">20</span>Compilation & Hybrid</a>
+<a href="#s21"><span class="n">21</span>Benchmarks vs Python</a>
+<a href="#s22"><span class="n">22</span>Operators Reference</a>
+<a href="#s23"><span class="n">23</span>CLI Reference</a>
+<a href="#s24"><span class="n">24</span>Full Examples</a>
+<a href="#s25"><span class="n">25</span>All Rules Summary</a>
+</div>
+</div>
+
+<!-- 01 -->
+<div class="s" id="s1">
+<h2>01. Overview</h2>
+<p>SymbolCore compiles to Python (for library access) and C (for speed). Pure functions auto-compile to native C via gcc. Python library calls stay as Python. The compiler decides — you write one file.</p>
+<pre><span class="cm"># hello.sym — this is all you need</span>
+<span class="bi">print</span> <span class="st">"Hello from SymbolCore!"</span>
+
+<span class="kw">let</span> name = <span class="st">"World"</span>
+<span class="bi">print</span> <span class="st">"Hello, {name}!"</span></pre>
+<pre><span class="cm"># Run it</span>
+sym run hello.sym</pre>
+</div>
+
+<!-- 02 -->
+<div class="s" id="s2">
+<h2>02. Variables & Constants</h2>
+<h4>let — mutable variable</h4>
+<pre><span class="kw">let</span> x = <span class="nm">42</span>
+<span class="kw">let</span> name = <span class="st">"Abir"</span>
+<span class="kw">let</span> pi = <span class="nm">3.14159</span>
+<span class="kw">let</span> active = <span class="nm">true</span>
+<span class="kw">let</span> items = [<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>]</pre>
+<h4>const — immutable</h4>
+<pre><span class="kw">const</span> MAX = <span class="nm">1000</span>
+<span class="kw">const</span> URL = <span class="st">"https://api.example.com"</span></pre>
+<h4>With types (optional)</h4>
+<pre><span class="kw">let</span> x: <span class="tp">int</span> = <span class="nm">42</span>
+<span class="kw">let</span> name: <span class="tp">str</span> = <span class="st">"Abir"</span></pre>
+<h4>Reassignment (no let)</h4>
+<pre><span class="kw">let</span> x = <span class="nm">10</span>
+x = <span class="nm">20</span>        <span class="cm"># no let for reassignment</span>
+x += <span class="nm">5</span>        <span class="cm"># compound: +=  -=  *=  /=</span></pre>
+<div class="r"><strong>Rule:</strong> First assignment uses <code>let</code>. Subsequent reassignments don't. <code>const</code> cannot be reassigned.</div>
+</div>
+
+<!-- 03 -->
+<div class="s" id="s3">
+<h2>03. Type System <span class="tg">gradual</span></h2>
+<p>Types are optional. Adding them enables better C compilation and catches errors early.</p>
+<table>
+<tr><th>SymbolCore</th><th>Description</th><th>C Type</th></tr>
+<tr><td><code>int</code></td><td>64-bit integer</td><td><code>int64_t</code></td></tr>
+<tr><td><code>i32</code></td><td>32-bit integer</td><td><code>int32_t</code></td></tr>
+<tr><td><code>float</code></td><td>64-bit float</td><td><code>double</code></td></tr>
+<tr><td><code>f32</code></td><td>32-bit float</td><td><code>float</code></td></tr>
+<tr><td><code>bool</code></td><td>Boolean</td><td><code>int</code></td></tr>
+<tr><td><code>str</code></td><td>UTF-8 string</td><td><code>char*</code></td></tr>
+<tr><td><code>list&lt;T&gt;</code></td><td>Dynamic array</td><td>Python list</td></tr>
+<tr><td><code>dict&lt;K,V&gt;</code></td><td>Hash map</td><td>Python dict</td></tr>
+<tr><td><code>T?</code></td><td>Optional (nullable)</td><td>—</td></tr>
+</table>
+<div class="r"><strong>Syntax:</strong> Types go after name with colon: <code>name: type</code>. Return types use arrow: <code>-> type</code>.</div>
+</div>
+
+<!-- 04 -->
+<div class="s" id="s4">
+<h2>04. Functions</h2>
+<h4>Basic</h4>
+<pre><span class="kw">fn</span> <span class="fn">add</span>(a: <span class="tp">int</span>, b: <span class="tp">int</span>) -> <span class="tp">int</span>
+    <span class="kw">return</span> a + b</pre>
+<h4>Single expression (fat arrow)</h4>
+<pre><span class="kw">fn</span> <span class="fn">double</span>(x: <span class="tp">int</span>) -> <span class="tp">int</span> <span class="op">=></span> x * <span class="nm">2</span></pre>
+<h4>No return type (void)</h4>
+<pre><span class="kw">fn</span> <span class="fn">greet</span>(name: <span class="tp">str</span>)
+    <span class="bi">print</span> <span class="st">"Hello {name}"</span></pre>
+<h4>Default parameters</h4>
+<pre><span class="kw">fn</span> <span class="fn">connect</span>(host: <span class="tp">str</span>, port: <span class="tp">int</span> = <span class="nm">8080</span>)
+    <span class="bi">print</span> <span class="st">"Connecting to {host}:{port}"</span></pre>
+<h4>Recursive</h4>
+<pre><span class="kw">fn</span> <span class="fn">factorial</span>(n: <span class="tp">int</span>) -> <span class="tp">int</span>
+    <span class="kw">if</span> n <= <span class="nm">1</span>
+        <span class="kw">return</span> <span class="nm">1</span>
+    <span class="kw">return</span> n * <span class="fn">factorial</span>(n - <span class="nm">1</span>)</pre>
+<div class="r"><strong>Rule:</strong> Use <code>fn</code>, NOT <code>def</code>. No colon after signature. No parentheses around body. 4-space indent. Return type uses <code>-></code>.</div>
+</div>
+
+<!-- 05 -->
+<div class="s" id="s5">
+<h2>05. Control Flow</h2>
+<h4>if / elif / else</h4>
+<pre><span class="kw">if</span> score >= <span class="nm">90</span>
+    grade = <span class="st">"A"</span>
+<span class="kw">elif</span> score >= <span class="nm">80</span>
+    grade = <span class="st">"B"</span>
+<span class="kw">else</span>
+    grade = <span class="st">"F"</span></pre>
+<div class="r"><strong>Rule:</strong> No colon after <code>if</code>/<code>elif</code>/<code>else</code>. No parentheses around condition. Body indented 4 spaces.</div>
+</div>
+
+<!-- 06 -->
+<div class="s" id="s6">
+<h2>06. Loops & Ranges</h2>
+<h4>for with range (..)</h4>
+<pre><span class="kw">for</span> i <span class="kw">in</span> <span class="nm">0</span><span class="op">..</span><span class="nm">10</span>
+    <span class="bi">print</span> i            <span class="cm"># 0 through 9 (exclusive end)</span></pre>
+<h4>for over collection</h4>
+<pre><span class="kw">for</span> item <span class="kw">in</span> items
+    <span class="bi">print</span> item</pre>
+<h4>for with index</h4>
+<pre><span class="kw">for</span> i, val <span class="kw">in</span> <span class="fn">enumerate</span>(data)
+    <span class="bi">print</span> <span class="st">"{i}: {val}"</span></pre>
+<h4>while</h4>
+<pre><span class="kw">let</span> x = <span class="nm">0</span>
+<span class="kw">while</span> x < <span class="nm">100</span>
+    x += <span class="nm">1</span></pre>
+<h4>break / continue</h4>
+<pre><span class="kw">for</span> i <span class="kw">in</span> <span class="nm">0</span><span class="op">..</span><span class="nm">100</span>
+    <span class="kw">if</span> i == <span class="nm">50</span>
+        <span class="kw">break</span>
+    <span class="kw">if</span> i % <span class="nm">2</span> == <span class="nm">0</span>
+        <span class="kw">continue</span>
+    <span class="bi">print</span> i</pre>
+<div class="r"><strong>Rule:</strong> Range is <code>start..stop</code> (exclusive end). Two dots. No colon after <code>for</code>/<code>while</code>. <code>range()</code> also works.</div>
+</div>
+
+<!-- 07 -->
+<div class="s" id="s7">
+<h2>07. Strings & Interpolation</h2>
+<pre><span class="kw">let</span> name = <span class="st">"Abir"</span>
+<span class="kw">let</span> age = <span class="nm">28</span>
+<span class="bi">print</span> <span class="st">"Name: {name}, Age: {age}"</span>     <span class="cm"># auto f-string</span>
+<span class="bi">print</span> <span class="st">"2 + 2 = {2 + 2}"</span>              <span class="cm"># expressions work</span>
+
+<span class="kw">let</span> msg = <span class="st">"Score: "</span> + <span class="fn">str</span>(score)     <span class="cm"># concatenation</span></pre>
+<div class="r"><strong>Rule:</strong> Any string with <code>{expr}</code> auto-interpolates. No <code>f"..."</code> prefix needed. Both <code>"double"</code> and <code>'single'</code> quotes work.</div>
+</div>
+
+<!-- 08 -->
+<div class="s" id="s8">
+<h2>08. Collections</h2>
+<h4>Lists</h4>
+<pre><span class="kw">let</span> nums = [<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>, <span class="nm">4</span>, <span class="nm">5</span>]
+<span class="kw">let</span> first = nums[<span class="nm">0</span>]          <span class="cm"># indexing</span>
+<span class="kw">let</span> slice = nums[<span class="nm">1</span>:<span class="nm">3</span>]       <span class="cm"># slicing</span>
+nums.append(<span class="nm">6</span>)               <span class="cm"># methods work</span></pre>
+<h4>Dicts</h4>
+<pre><span class="kw">let</span> user = {<span class="st">"name"</span>: <span class="st">"Abir"</span>, <span class="st">"age"</span>: <span class="nm">28</span>}
+<span class="bi">print</span> user[<span class="st">"name"</span>]</pre>
+<h4>Tuples</h4>
+<pre><span class="kw">let</span> point = (<span class="nm">3.0</span>, <span class="nm">4.0</span>)</pre>
+</div>
+
+<!-- 09 -->
+<div class="s" id="s9">
+<h2>09. Structs & Methods</h2>
+<pre><span class="kw">struct</span> <span class="tp">Point</span>
+    x: <span class="tp">float</span>
+    y: <span class="tp">float</span>
+
+    <span class="kw">fn</span> <span class="fn">distance</span>(self, other: <span class="tp">Point</span>) -> <span class="tp">float</span>
+        <span class="kw">let</span> dx = self.x - other.x
+        <span class="kw">let</span> dy = self.y - other.y
+        <span class="kw">return</span> <span class="fn">sqrt</span>(dx * dx + dy * dy)
+
+<span class="kw">let</span> p1 = <span class="tp">Point</span>(<span class="nm">0.0</span>, <span class="nm">0.0</span>)
+<span class="kw">let</span> p2 = <span class="tp">Point</span>(<span class="nm">3.0</span>, <span class="nm">4.0</span>)
+<span class="bi">print</span> p1.<span class="fn">distance</span>(p2)     <span class="cm"># 5.0</span></pre>
+<h4>Default fields</h4>
+<pre><span class="kw">struct</span> <span class="tp">Config</span>
+    host: <span class="tp">str</span> = <span class="st">"localhost"</span>
+    port: <span class="tp">int</span> = <span class="nm">8080</span></pre>
+<div class="r"><strong>Rule:</strong> Constructor auto-generated from fields. Methods take <code>self</code> as first param. Structs stay in Python mode (not compiled to C).</div>
+</div>
+
+<!-- 10 -->
+<div class="s" id="s10">
+<h2>10. Traits & Impl</h2>
+<pre><span class="kw">trait</span> <span class="tp">Printable</span>
+    <span class="kw">fn</span> <span class="fn">to_string</span>(self) -> <span class="tp">str</span>
+
+<span class="kw">impl</span> <span class="tp">Printable</span> <span class="kw">for</span> <span class="tp">Point</span>
+    <span class="kw">fn</span> <span class="fn">to_string</span>(self) -> <span class="tp">str</span>
+        <span class="kw">return</span> <span class="st">"Point({self.x}, {self.y})"</span></pre>
+</div>
+
+<!-- 11 -->
+<div class="s" id="s11">
+<h2>11. Python Interop <span class="tg">killer feature</span></h2>
+<p>Use ANY pip package. The <code>py.</code> prefix tells the compiler it's a Python library. Missing packages are auto-installed.</p>
+<h4>Import syntax</h4>
+<pre><span class="kw">import</span> py.numpy <span class="kw">as</span> np
+<span class="kw">import</span> py.pandas <span class="kw">as</span> pd
+<span class="kw">import</span> py.matplotlib.pyplot <span class="kw">as</span> plt
+<span class="kw">import</span> py.requests <span class="kw">as</span> req
+<span class="kw">import</span> py.sklearn.ensemble <span class="kw">as</span> sk
+<span class="kw">import</span> py.torch <span class="kw">as</span> torch
+<span class="kw">import</span> py.bs4.BeautifulSoup <span class="kw">as</span> BS
+<span class="kw">import</span> py.json <span class="kw">as</span> json
+<span class="kw">import</span> py.os <span class="kw">as</span> os
+<span class="kw">import</span> py.sys <span class="kw">as</span> sys</pre>
+<h4>Usage</h4>
+<pre><span class="kw">import</span> py.numpy <span class="kw">as</span> np
+
+<span class="kw">let</span> data = np.<span class="fn">array</span>([<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>, <span class="nm">4</span>, <span class="nm">5</span>])
+<span class="bi">print</span> <span class="st">"Mean: {np.mean(data)}"</span></pre>
+<h4>Auto-install chain</h4>
+<p>When a package is missing: <code>pip install --user</code> → <code>pip3 install --user</code> → <code>sudo apt install python3-pkg</code> → prints manual instructions.</p>
+<h4>Name mappings</h4>
+<table>
+<tr><th>Module</th><th>Pip Package</th></tr>
+<tr><td><code>cv2</code></td><td><code>opencv-python</code></td></tr>
+<tr><td><code>PIL</code></td><td><code>Pillow</code></td></tr>
+<tr><td><code>sklearn</code></td><td><code>scikit-learn</code></td></tr>
+<tr><td><code>bs4</code></td><td><code>beautifulsoup4</code></td></tr>
+<tr><td><code>yaml</code></td><td><code>pyyaml</code></td></tr>
+<tr><td><code>docx</code></td><td><code>python-docx</code></td></tr>
+<tr><td><code>serial</code></td><td><code>pyserial</code></td></tr>
+<tr><td><code>Crypto</code></td><td><code>pycryptodome</code></td></tr>
+</table>
+<div class="r e"><strong>Critical:</strong> ALL Python imports MUST use <code>py.</code> prefix. <code>import numpy</code> will NOT work. Use <code>import py.numpy as np</code>.</div>
+</div>
+
+<!-- 12 -->
+<div class="s" id="s12">
+<h2>12. Built-in Functions</h2>
+<p>Always available. No import needed.</p>
+<table>
+<tr><th>Function</th><th>Usage</th><th>Notes</th></tr>
+<tr><td><code>print</code></td><td><code>print "Hello {x}"</code></td><td>Keyword — no parens needed</td></tr>
+<tr><td><code>sort</code></td><td><code>sort data</code></td><td>Keyword — in-place, adaptive algorithm</td></tr>
+<tr><td><code>len(x)</code></td><td><code>len(data)</code></td><td>Function call syntax</td></tr>
+<tr><td><code>map(coll, fn)</code></td><td><code>map(data, (x) => x*2)</code></td><td>Returns new list</td></tr>
+<tr><td><code>filter(coll, fn)</code></td><td><code>filter(data, (x) => x>0)</code></td><td>Returns filtered list</td></tr>
+<tr><td><code>range(a, b)</code></td><td><code>range(0, 100)</code></td><td>Same as <code>0..100</code></td></tr>
+<tr><td><code>enumerate(x)</code></td><td><code>enumerate(items)</code></td><td>Index + value pairs</td></tr>
+<tr><td><code>zip(a, b)</code></td><td><code>zip(keys, vals)</code></td><td>Combine collections</td></tr>
+<tr><td><code>type(x)</code></td><td><code>type(42)</code></td><td>Get type</td></tr>
+<tr><td><code>clone(x)</code></td><td><code>clone(data)</code></td><td>Deep copy</td></tr>
+<tr><td><code>str(x)</code></td><td><code>str(42)</code></td><td>Convert to string</td></tr>
+<tr><td><code>sqrt(x)</code></td><td><code>sqrt(16)</code></td><td>Square root</td></tr>
+<tr><td><code>sin cos tan</code></td><td><code>sin(3.14)</code></td><td>Trig functions</td></tr>
+<tr><td><code>log log2 log10</code></td><td><code>log(100)</code></td><td>Logarithms</td></tr>
+<tr><td><code>floor ceil</code></td><td><code>floor(3.7)</code></td><td>Round down/up</td></tr>
+</table>
+<p>Constants: <code>PI</code>, <code>E</code>, <code>INF</code></p>
+</div>
+
+<!-- 13 -->
+<div class="s" id="s13">
+<h2>13. Error Handling</h2>
+<pre><span class="kw">try</span>
+    <span class="kw">let</span> data = <span class="fn">read_file</span>(<span class="st">"config.json"</span>)
+<span class="kw">catch</span> e
+    <span class="bi">print</span> <span class="st">"Error: "</span> + <span class="fn">str</span>(e)
+
+<span class="cm"># With type</span>
+<span class="kw">try</span>
+    <span class="kw">let</span> r = py.requests.<span class="fn">get</span>(url)
+<span class="kw">catch</span> e: Exception
+    <span class="bi">print</span> <span class="st">"Failed"</span></pre>
+<div class="r"><strong>Rule:</strong> <code>try</code>/<code>catch</code>, NOT <code>try</code>/<code>except</code>. No colons.</div>
+</div>
+
+<!-- 14 -->
+<div class="s" id="s14">
+<h2>14. Pattern Matching</h2>
+<pre><span class="kw">match</span> command
+    <span class="st">"start"</span> <span class="op">=></span> <span class="fn">run</span>()
+    <span class="st">"stop"</span>  <span class="op">=></span> <span class="fn">shutdown</span>()
+    <span class="st">"help"</span>  <span class="op">=></span> <span class="fn">show_help</span>()
+    _       <span class="op">=></span> <span class="bi">print</span> <span class="st">"Unknown"</span></pre>
+<div class="r"><strong>Rule:</strong> <code>=></code> fat arrow between pattern and action. <code>_</code> is wildcard/default.</div>
+</div>
+
+<!-- 15 -->
+<div class="s" id="s15">
+<h2>15. Lambdas & Pipes</h2>
+<h4>Lambda</h4>
+<pre><span class="kw">let</span> sq = (x) <span class="op">=></span> x * x
+<span class="kw">let</span> add = (a, b) <span class="op">=></span> a + b
+
+<span class="kw">let</span> evens = <span class="fn">filter</span>(data, (x) <span class="op">=></span> x % <span class="nm">2</span> == <span class="nm">0</span>)</pre>
+<h4>Pipe operator</h4>
+<pre><span class="kw">let</span> result = data <span class="op">|></span> <span class="fn">filter</span>((x) <span class="op">=></span> x > <span class="nm">0</span>) <span class="op">|></span> <span class="fn">map</span>((x) <span class="op">=></span> x * <span class="nm">2</span>)</pre>
+<div class="r"><strong>Rule:</strong> <code>(params) => expr</code>, not <code>lambda</code>. Pipe <code>|></code> passes left as first arg to right.</div>
+</div>
+
+<!-- 16 -->
+<div class="s" id="s16">
+<h2>16. Benchmark & Optimize</h2>
+<pre><span class="kw">benchmark</span> <span class="kw">fn</span> <span class="fn">test_algo</span>()
+    <span class="kw">let</span> result = <span class="fn">fibonacci</span>(<span class="nm">30</span>)
+    <span class="bi">print</span> result
+
+<span class="fn">test_algo</span>()   <span class="cm"># prints timing automatically</span></pre>
+<p>Smart sort picks algorithm by data size:</p>
+<table>
+<tr><th>Size</th><th>Algorithm</th></tr>
+<tr><td>&lt;16</td><td>Insertion sort</td></tr>
+<tr><td>Nearly sorted</td><td>Timsort</td></tr>
+<tr><td>Large</td><td>qsort (C) / Timsort (Python)</td></tr>
+</table>
+</div>
+
+<!-- 17 — ALL THREE MODES SIDE BY SIDE -->
+<div class="s" id="s17">
+<h2>17. All Three Syntax Modes</h2>
+<p>All three compile to the same AST — zero performance difference. Choose your style.</p>
+
+<h3>Hello World</h3>
+<div class="comp">
+<div class="comp-col normal"><h4>Normal (.sym)</h4>
+<pre><span class="bi">print</span> <span class="st">"Hello!"</span>
+<span class="kw">let</span> x = <span class="nm">42</span>
+<span class="bi">print</span> <span class="st">"x = {x}"</span></pre></div>
+<div class="comp-col compact"><h4>Compact (#compact)</h4>
+<pre><span class="cm">#compact</span>
+>> <span class="st">"Hello!"</span>
+@ x = <span class="nm">42</span>
+>> <span class="st">"x = {x}"</span></pre></div>
+<div class="comp-col symbol"><h4>Symbol (#symbol)</h4>
+<pre><span class="cm">#symbol</span>
+⊕ <span class="st">"Hello!"</span>
+∂ x = <span class="nm">42</span>
+⊕ <span class="st">"x = {x}"</span></pre></div>
+</div>
+
+<h3>Functions</h3>
+<div class="comp">
+<div class="comp-col normal"><h4>Normal</h4>
+<pre><span class="kw">fn</span> <span class="fn">fib</span>(n: <span class="tp">int</span>) -> <span class="tp">int</span>
+    <span class="kw">if</span> n <= <span class="nm">1</span>
+        <span class="kw">return</span> n
+    <span class="kw">return</span> <span class="fn">fib</span>(n-<span class="nm">1</span>) + <span class="fn">fib</span>(n-<span class="nm">2</span>)</pre></div>
+<div class="comp-col compact"><h4>Compact</h4>
+<pre><span class="cm">#compact</span>
+f <span class="fn">fib</span>(n: <span class="tp">int</span>) -> <span class="tp">int</span>
+    ? n <= <span class="nm">1</span>
+        <- n
+    <- <span class="fn">fib</span>(n-<span class="nm">1</span>) + <span class="fn">fib</span>(n-<span class="nm">2</span>)</pre></div>
+<div class="comp-col symbol"><h4>Symbol</h4>
+<pre><span class="cm">#symbol</span>
+ƒ <span class="fn">fib</span>(n:ℤ)→ℤ
+    ? n ≤ <span class="nm">1</span>
+        ← n
+    ← <span class="fn">fib</span>(n-<span class="nm">1</span>) + <span class="fn">fib</span>(n-<span class="nm">2</span>)</pre></div>
+</div>
+
+<h3>Loops</h3>
+<div class="comp">
+<div class="comp-col normal"><h4>Normal</h4>
+<pre><span class="kw">for</span> i <span class="kw">in</span> <span class="nm">0</span><span class="op">..</span><span class="nm">10</span>
+    <span class="bi">print</span> i
+
+<span class="kw">while</span> x > <span class="nm">0</span>
+    x -= <span class="nm">1</span></pre></div>
+<div class="comp-col compact"><h4>Compact</h4>
+<pre><span class="cm">#compact</span>
+~ i <span class="kw">in</span> <span class="nm">0</span><span class="op">..</span><span class="nm">10</span>
+    >> i
+
+~~ x > <span class="nm">0</span>
+    x -= <span class="nm">1</span></pre></div>
+<div class="comp-col symbol"><h4>Symbol</h4>
+<pre><span class="cm">#symbol</span>
+∀ i <span class="kw">in</span> <span class="nm">0</span><span class="op">..</span><span class="nm">10</span>
+    ⊕ i
+
+⟳ x > <span class="nm">0</span>
+    x -= <span class="nm">1</span></pre></div>
+</div>
+
+<h3>Imports</h3>
+<div class="comp">
+<div class="comp-col normal"><h4>Normal</h4>
+<pre><span class="kw">import</span> py.numpy <span class="kw">as</span> np</pre></div>
+<div class="comp-col compact"><h4>Compact</h4>
+<pre><span class="cm">#compact</span>
+<< py.numpy <span class="kw">as</span> np</pre></div>
+<div class="comp-col symbol"><h4>Symbol</h4>
+<pre><span class="cm">#symbol</span>
+⊂ py.numpy <span class="kw">as</span> np</pre></div>
+</div>
+</div>
+
+<!-- 18 -->
+<div class="s" id="s18">
+<h2>18. Compact Mode — Complete Reference</h2>
+<p>Start file with <code>#compact</code> on the first line.</p>
+<table>
+<tr><th>Normal</th><th>Compact</th><th>Meaning</th></tr>
+<tr><td><code>fn</code></td><td><code>f</code></td><td>Define function</td></tr>
+<tr><td><code>let</code></td><td><code>@</code></td><td>Variable declaration</td></tr>
+<tr><td><code>return</code></td><td><code>&lt;-</code></td><td>Return from function</td></tr>
+<tr><td><code>if</code></td><td><code>?</code></td><td>If condition</td></tr>
+<tr><td><code>elif</code></td><td><code>??</code></td><td>Else-if</td></tr>
+<tr><td><code>else</code></td><td><code>!</code></td><td>Else block</td></tr>
+<tr><td><code>for</code></td><td><code>~</code></td><td>For loop</td></tr>
+<tr><td><code>while</code></td><td><code>~~</code></td><td>While loop</td></tr>
+<tr><td><code>print</code></td><td><code>&gt;&gt;</code></td><td>Print output</td></tr>
+<tr><td><code>import</code></td><td><code>&lt;&lt;</code></td><td>Import module</td></tr>
+</table>
+<p>Everything else (operators, types, strings, structs, etc.) stays the same.</p>
+</div>
+
+<!-- 19 -->
+<div class="s" id="s19">
+<h2>19. Symbol Mode — Complete Reference</h2>
+<p>Start file with <code>#symbol</code>. Inherits ALL compact mode shortcuts plus Unicode operators.</p>
+<table>
+<tr><th>Normal</th><th>Symbol</th><th>Unicode Name</th></tr>
+<tr><td><code>fn</code></td><td><code>ƒ</code></td><td>Latin Small F with Hook (U+0192)</td></tr>
+<tr><td><code>let</code></td><td><code>∂</code></td><td>Partial Differential (U+2202)</td></tr>
+<tr><td><code>return</code></td><td><code>←</code></td><td>Leftwards Arrow (U+2190)</td></tr>
+<tr><td><code>for</code></td><td><code>∀</code></td><td>For All (U+2200)</td></tr>
+<tr><td><code>while</code></td><td><code>⟳</code></td><td>Clockwise Arrow (U+27F3)</td></tr>
+<tr><td><code>import</code></td><td><code>⊂</code></td><td>Subset Of (U+2282)</td></tr>
+<tr><td><code>print</code></td><td><code>⊕</code></td><td>Circled Plus (U+2295)</td></tr>
+<tr><td><code>-></code></td><td><code>→</code></td><td>Rightwards Arrow (U+2192)</td></tr>
+<tr><td><code>!=</code></td><td><code>≠</code></td><td>Not Equal To (U+2260)</td></tr>
+<tr><td><code>&lt;=</code></td><td><code>≤</code></td><td>Less-Than or Equal (U+2264)</td></tr>
+<tr><td><code>&gt;=</code></td><td><code>≥</code></td><td>Greater-Than or Equal (U+2265)</td></tr>
+<tr><td><code>=</code></td><td><code>≔</code></td><td>Colon Equals (U+2254)</td></tr>
+<tr><td><code>int</code></td><td><code>ℤ</code></td><td>Double-Struck Z (U+2124)</td></tr>
+<tr><td><code>float</code></td><td><code>ℝ</code></td><td>Double-Struck R (U+211D)</td></tr>
+<tr><td><code>bool</code></td><td><code>𝔹</code></td><td>Double-Struck B (U+1D539)</td></tr>
+<tr><td><code>str</code></td><td><code>𝕊</code></td><td>Double-Struck S (U+1D54A)</td></tr>
+</table>
+<p>Symbol mode also supports compact shortcuts: <code>?</code> for if, <code>!</code> for else, <code>~</code> for for, <code>~~</code> for while, <code>&gt;&gt;</code> for print, <code>&lt;&lt;</code> for import, <code>&lt;-</code> for return.</p>
+</div>
+
+<!-- 20 -->
+<div class="s" id="s20">
+<h2>20. Compilation & Hybrid Engine</h2>
+<h3>How it works</h3>
+<p><code>sym run file.sym</code> automatically:</p>
+<ol>
+<li>Parses the file</li>
+<li>Analyzes each function — does it use <code>py.*</code> libraries?</li>
+<li><strong>Pure functions</strong> (no Python deps) → compiled to C shared library (<code>.so</code>)</li>
+<li><strong>Python-dependent</strong> functions → stay as Python</li>
+<li>Generated Python loads <code>.so</code> via ctypes, calls native C functions</li>
+<li>The <code>.so</code> is cached — subsequent runs skip compilation</li>
+</ol>
+
+<h4>What goes to C (pure)</h4>
+<ul>
+<li>Math functions with typed params</li>
+<li>Loops over ranges</li>
+<li>Integer/float arithmetic</li>
+<li>Fixed-size array operations</li>
+<li>Recursive functions</li>
+</ul>
+
+<h4>What stays Python</h4>
+<ul>
+<li>Any function using <code>py.*</code> imports</li>
+<li>Functions calling other Python-dependent functions</li>
+<li><code>benchmark</code> functions</li>
+<li>Struct methods</li>
+<li>Dynamic list operations (append, concat)</li>
+<li>try/catch and match statements</li>
+</ul>
+
+<h4>Check the split</h4>
+<pre>sym check file.sym
+<span class="cm"># ✅ file.sym: 7 statements</span>
+<span class="cm">#    Functions: 5 total</span>
+<span class="cm">#      → C:      4 (fibonacci, is_prime, count_primes, sum_cubes)</span>
+<span class="cm">#      → Python: 1</span></pre>
+</div>
+
+<!-- 21 — BENCHMARKS -->
+<div class="s" id="s21">
+<h2>21. Benchmarks vs Python <span class="tg">real numbers</span></h2>
+<p>All benchmarks run on the same machine, same test (fib(35) + sum_squares(1M) + count_primes(100K)).</p>
+
+<div class="bm">
+<h4>Overall: fib(35) + sum_squares(1M) + count_primes(100K)</h4>
+<div class="bm-row"><span class="bm-label">Raw Python 3.12</span><div class="bm-bar"><div class="bm-fill py" style="width:100%">2,237 ms</div></div><span class="bm-val">1x</span></div>
+<div class="bm-row"><span class="bm-label">SymbolCore (Python)</span><div class="bm-bar"><div class="bm-fill py" style="width:100%">~2,200 ms</div></div><span class="bm-val">~1x</span></div>
+<div class="bm-row"><span class="bm-label">SymbolCore (Hybrid)</span><div class="bm-bar"><div class="bm-fill hy" style="width:41%">900 ms</div></div><span class="bm-val">2.5x</span></div>
+<div class="bm-row"><span class="bm-label">SymbolCore (Native)</span><div class="bm-bar"><div class="bm-fill na" style="width:2.7%">60 ms</div></div><span class="bm-val" style="color:var(--ac)">37x</span></div>
+</div>
+
+<div class="bm">
+<h4>fibonacci(35) — recursive</h4>
+<div class="bm-row"><span class="bm-label">Python</span><div class="bm-bar"><div class="bm-fill py" style="width:100%">1,778 ms</div></div><span class="bm-val">1x</span></div>
+<div class="bm-row"><span class="bm-label">SymbolCore Native</span><div class="bm-bar"><div class="bm-fill na" style="width:1.6%">29 ms</div></div><span class="bm-val" style="color:var(--ac)">62x</span></div>
+</div>
+
+<div class="bm">
+<h4>sum_squares(1,000,000) — tight loop</h4>
+<div class="bm-row"><span class="bm-label">Python</span><div class="bm-bar"><div class="bm-fill py" style="width:100%">166 ms</div></div><span class="bm-val">1x</span></div>
+<div class="bm-row"><span class="bm-label">SymbolCore Native</span><div class="bm-bar"><div class="bm-fill na" style="width:0.3%">&lt;0.1 ms</div></div><span class="bm-val" style="color:var(--ac)">>1000x</span></div>
+</div>
+
+<div class="bm">
+<h4>count_primes(100,000) — while + modulo</h4>
+<div class="bm-row"><span class="bm-label">Python</span><div class="bm-bar"><div class="bm-fill py" style="width:100%">228 ms</div></div><span class="bm-val">1x</span></div>
+<div class="bm-row"><span class="bm-label">SymbolCore Native</span><div class="bm-bar"><div class="bm-fill na" style="width:20%">46 ms</div></div><span class="bm-val" style="color:var(--ac)">5x</span></div>
+</div>
+
+<h3>When to use which mode</h3>
+<table>
+<tr><th>Mode</th><th>Command</th><th>Use when</th></tr>
+<tr><td>Python</td><td><code>sym run --python file.sym</code></td><td>Debugging, or code uses only Python libs</td></tr>
+<tr><td>Hybrid (default)</td><td><code>sym run file.sym</code></td><td>Mixed code — auto-splits C and Python</td></tr>
+<tr><td>Native binary</td><td><code>sym build -t native file.sym</code></td><td>Pure computation, no Python libs needed</td></tr>
+</table>
+</div>
+
+<!-- 22 -->
+<div class="s" id="s22">
+<h2>22. Operators Reference</h2>
+<table>
+<tr><th>Category</th><th>Operators</th></tr>
+<tr><td>Arithmetic</td><td><code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>//</code> (floor div) <code>%</code> (modulo) <code>**</code> (power)</td></tr>
+<tr><td>Comparison</td><td><code>==</code> <code>!=</code> <code>&lt;</code> <code>&gt;</code> <code>&lt;=</code> <code>&gt;=</code></td></tr>
+<tr><td>Logic</td><td><code>and</code> <code>or</code> <code>not</code></td></tr>
+<tr><td>Assignment</td><td><code>=</code> <code>+=</code> <code>-=</code> <code>*=</code> <code>/=</code></td></tr>
+<tr><td>Range</td><td><code>..</code> (exclusive end)</td></tr>
+<tr><td>Arrow</td><td><code>-></code> (return type) <code>=></code> (lambda / match)</td></tr>
+<tr><td>Pipe</td><td><code>|></code> (pass left as first arg to right)</td></tr>
+<tr><td>Membership</td><td><code>in</code></td></tr>
+<tr><td>Access</td><td><code>.</code> (member) <code>[]</code> (index) <code>[:]</code> (slice)</td></tr>
+</table>
+</div>
+
+<!-- 23 -->
+<div class="s" id="s23">
+<h2>23. CLI Reference</h2>
+<table>
+<tr><th>Command</th><th>What it does</th></tr>
+<tr><td><code>sym run &lt;file.sym&gt;</code></td><td>Run (hybrid C+Python, automatic)</td></tr>
+<tr><td><code>sym run -v &lt;file&gt;</code></td><td>Verbose — shows C vs Python split</td></tr>
+<tr><td><code>sym run --python &lt;file&gt;</code></td><td>Force pure Python mode</td></tr>
+<tr><td><code>sym run --emit &lt;file&gt;</code></td><td>Show generated C + Python code</td></tr>
+<tr><td><code>sym run --tokens &lt;file&gt;</code></td><td>Show lexer tokens</td></tr>
+<tr><td><code>sym run --ast &lt;file&gt;</code></td><td>Show AST</td></tr>
+<tr><td><code>sym build -t python &lt;file&gt;</code></td><td>Emit .py source</td></tr>
+<tr><td><code>sym build -t c &lt;file&gt;</code></td><td>Emit .c source</td></tr>
+<tr><td><code>sym build -t native &lt;file&gt;</code></td><td>Compile to binary (gcc)</td></tr>
+<tr><td><code>sym build -t hybrid &lt;file&gt;</code></td><td>Build .so + Python wrapper</td></tr>
+<tr><td><code>sym check &lt;file&gt;</code></td><td>Analyze purity, show C vs Python</td></tr>
+<tr><td><code>sym repl</code></td><td>Interactive REPL</td></tr>
+<tr><td><code>sym version</code></td><td>Show version</td></tr>
+</table>
+</div>
+
+<!-- 24 -->
+<div class="s" id="s24">
+<h2>24. Full Examples</h2>
+
+<h3>Web Scraper</h3>
+<pre><span class="kw">import</span> py.requests <span class="kw">as</span> req
+<span class="kw">import</span> py.json <span class="kw">as</span> json
+
+<span class="kw">let</span> r = req.<span class="fn">get</span>(<span class="st">"https://api.github.com/repos/python/cpython"</span>)
+<span class="kw">let</span> data = r.<span class="fn">json</span>()
+<span class="bi">print</span> <span class="st">"Stars: "</span> + <span class="fn">str</span>(data[<span class="st">"stargazers_count"</span>])</pre>
+
+<h3>Data Pipeline</h3>
+<pre><span class="kw">import</span> py.numpy <span class="kw">as</span> np
+<span class="kw">import</span> py.pandas <span class="kw">as</span> pd
+
+<span class="cm"># Pure → compiles to C</span>
+<span class="kw">fn</span> <span class="fn">sum_squares</span>(n: <span class="tp">int</span>) -> <span class="tp">int</span>
+    <span class="kw">let</span> total = <span class="nm">0</span>
+    <span class="kw">for</span> i <span class="kw">in</span> <span class="nm">0</span><span class="op">..</span>n
+        total += i * i
+    <span class="kw">return</span> total
+
+<span class="cm"># Python interop → stays Python</span>
+<span class="kw">let</span> df = pd.<span class="fn">read_csv</span>(<span class="st">"data.csv"</span>)
+<span class="bi">print</span> df.<span class="fn">describe</span>()</pre>
+
+<h3>Hybrid Speed Demo</h3>
+<pre><span class="kw">import</span> py.json <span class="kw">as</span> json
+
+<span class="cm"># These 4 → compiled to C</span>
+<span class="kw">fn</span> <span class="fn">fibonacci</span>(n: <span class="tp">int</span>) -> <span class="tp">int</span>
+    <span class="kw">if</span> n <= <span class="nm">1</span>
+        <span class="kw">return</span> n
+    <span class="kw">return</span> <span class="fn">fibonacci</span>(n - <span class="nm">1</span>) + <span class="fn">fibonacci</span>(n - <span class="nm">2</span>)
+
+<span class="kw">fn</span> <span class="fn">is_prime</span>(n: <span class="tp">int</span>) -> <span class="tp">int</span>
+    <span class="kw">if</span> n < <span class="nm">2</span>
+        <span class="kw">return</span> <span class="nm">0</span>
+    <span class="kw">let</span> i = <span class="nm">2</span>
+    <span class="kw">while</span> i * i <= n
+        <span class="kw">if</span> n % i == <span class="nm">0</span>
+            <span class="kw">return</span> <span class="nm">0</span>
+        i += <span class="nm">1</span>
+    <span class="kw">return</span> <span class="nm">1</span>
+
+<span class="cm"># This → stays Python (uses json)</span>
+<span class="kw">let</span> results = {<span class="st">"fib"</span>: <span class="fn">fibonacci</span>(<span class="nm">35</span>)}
+<span class="bi">print</span> json.<span class="fn">dumps</span>(results, indent=<span class="nm">2</span>)</pre>
+
+<h3>Snake Game (Symbol Mode)</h3>
+<pre><span class="cm">#symbol</span>
+⊂ py.curses <span class="kw">as</span> curses
+⊂ py.random <span class="kw">as</span> random
+
+ƒ <span class="fn">game</span>(stdscr)
+    curses.<span class="fn">curs_set</span>(<span class="nm">0</span>)
+    ∂ snake = [[<span class="nm">10</span>, <span class="nm">15</span>], [<span class="nm">10</span>, <span class="nm">14</span>], [<span class="nm">10</span>, <span class="nm">13</span>]]
+    ∂ dy = <span class="nm">0</span>
+    ∂ dx = <span class="nm">1</span>
+    ∂ alive = <span class="nm">1</span>
+
+    ⟳ alive == <span class="nm">1</span>
+        ∂ key = stdscr.<span class="fn">getch</span>()
+        ? key == curses.KEY_UP
+            ? dy ≠ <span class="nm">1</span>
+                dy = <span class="nm">-1</span>
+                dx = <span class="nm">0</span>
+        <span class="cm"># ... movement logic</span>
+
+∂ final = curses.<span class="fn">wrapper</span>(game)</pre>
+</div>
+
+<!-- 25 -->
+<div class="s" id="s25">
+<h2>25. All Rules Summary</h2>
+<div class="r"><strong>1.</strong> 4-space indentation. No tabs. No braces. Indentation defines blocks.</div>
+<div class="r"><strong>2.</strong> No colons after <code>if</code> <code>for</code> <code>while</code> <code>fn</code> <code>else</code> <code>elif</code> <code>struct</code> <code>match</code> <code>try</code> <code>catch</code>.</div>
+<div class="r"><strong>3.</strong> Functions: <code>fn name(params) -> type</code>. NOT <code>def</code>.</div>
+<div class="r"><strong>4.</strong> Variables: <code>let x = value</code> for first assignment. No <code>let</code> for reassignment.</div>
+<div class="r"><strong>5.</strong> Python imports: <code>import py.package as alias</code>. The <code>py.</code> prefix is REQUIRED.</div>
+<div class="r"><strong>6.</strong> Strings: <code>"text {expr}"</code> auto-interpolates. No <code>f"..."</code> prefix.</div>
+<div class="r"><strong>7.</strong> <code>print</code> is a keyword: <code>print "hello"</code>. No parentheses needed.</div>
+<div class="r"><strong>8.</strong> <code>sort</code> is a keyword: <code>sort data</code>. In-place. Adaptive algorithm.</div>
+<div class="r"><strong>9.</strong> Ranges: <code>0..100</code>. Two dots. Exclusive end.</div>
+<div class="r"><strong>10.</strong> Lambdas: <code>(x) => x * 2</code>. Fat arrow, not <code>lambda</code>.</div>
+<div class="r"><strong>11.</strong> Logic: <code>and</code> <code>or</code> <code>not</code>. Words, not symbols.</div>
+<div class="r"><strong>12.</strong> Booleans: <code>true</code> <code>false</code> <code>none</code>. Lowercase.</div>
+<div class="r"><strong>13.</strong> Error handling: <code>try</code>/<code>catch</code>. NOT <code>try</code>/<code>except</code>.</div>
+<div class="r"><strong>14.</strong> Match: <code>match value</code> then <code>pattern => action</code>. <code>_</code> for default.</div>
+<div class="r"><strong>15.</strong> Structs: <code>struct Name</code> with <code>field: type</code>. Methods use <code>fn</code> with <code>self</code>.</div>
+<div class="r"><strong>16.</strong> Comments: <code># comment</code>. Hash style.</div>
+<div class="r"><strong>17.</strong> File extension: <code>.sym</code>. Always.</div>
+<div class="r"><strong>18.</strong> No semicolons. One statement per line.</div>
+<div class="r"><strong>19.</strong> Power: <code>**</code>. Floor div: <code>//</code>. Modulo: <code>%</code>.</div>
+<div class="r"><strong>20.</strong> Pipe: <code>|></code>. Passes left as first arg to right function.</div>
+<div class="r"><strong>21.</strong> Mode declaration: <code>#compact</code> or <code>#symbol</code> on first line of file.</div>
+<div class="r"><strong>22.</strong> Compact: <code>@</code>=let <code>?</code>=if <code>!</code>=else <code>~</code>=for <code>~~</code>=while <code>&gt;&gt;</code>=print <code>&lt;&lt;</code>=import <code>&lt;-</code>=return <code>f</code>=fn</div>
+<div class="r"><strong>23.</strong> Symbol: <code>∂</code>=let <code>ƒ</code>=fn <code>←</code>=return <code>∀</code>=for <code>⟳</code>=while <code>⊂</code>=import <code>⊕</code>=print <code>≠</code>=!= <code>≤</code>=&lt;= <code>≥</code>=>=</div>
+<div class="r"><strong>24.</strong> Symbol types: <code>ℤ</code>=int <code>ℝ</code>=float <code>𝔹</code>=bool <code>𝕊</code>=str</div>
+</div>
+
+<div style="margin-top:80px;padding:28px 0;border-top:1px solid var(--bd);text-align:center;color:var(--txd);font-size:12.5px">
+<p>SymbolCore v0.2.0 — Complete Language Reference</p>
+<p style="margin-top:4px">Hosted on <strong>testwallah.in</strong></p>
+</div>
+</div>
+</body>
+</html>

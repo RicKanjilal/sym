@@ -1,0 +1,25 @@
+# Sym — Python Interop Demo
+# This will auto-install numpy and requests if not present!
+
+import py.numpy as np
+
+# Create arrays using numpy
+let data = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+print "NumPy array: {data}"
+print "Mean: {np.mean(data)}"
+print "Std:  {np.std(data)}"
+print "Sum:  {np.sum(data)}"
+
+# Matrix operations
+let A = np.array([[1, 2], [3, 4]])
+let B = np.array([[5, 6], [7, 8]])
+let C = np.dot(A, B)
+print "Matrix multiply:"
+print C
+
+# Random data
+let random_data = np.random.randn(1000)
+print "Random sample mean: {np.mean(random_data):.4f}"
+print "Random sample std:  {np.std(random_data):.4f}"
+
+print "✅ Python interop working!"

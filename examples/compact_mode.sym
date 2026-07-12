@@ -1,0 +1,19 @@
+#compact
+# Sym Compact Mode Demo
+
+@ data = [5, 3, 1, 4, 2, 8, 7, 6]
+>> "Before: {data}"
+sort data
+>> "After:  {data}"
+
+f fib(n: int) -> int
+    ? n <= 1
+        <- n
+    <- fib(n - 1) + fib(n - 2)
+
+>> "fib(15) = {fib(15)}"
+
+~ i in 0..5
+    >> "  {i} squared = {i * i}"
+
+>> "✅ Compact mode works!"

@@ -1,0 +1,404 @@
+# Sym — Personal Finance Tracker
+# Full app: curses UI, file persistence, categories, charts, search
+# Run: sym run finance.sym
+
+import py.curses as curses
+import py.json as json
+import py.os as os
+import py.datetime as dt
+
+fn load_data(path: str) -> dict
+    if os.path.exists(path)
+        let raw = open(path).read()
+        return json.loads(raw)
+    return {"transactions": [], "budgets": {}}
+
+fn save_data(path: str, data: dict)
+    let f = open(path, "w")
+    f.write(json.dumps(data, indent=2))
+    f.close()
+
+fn get_balance(txns: list) -> float
+    let bal = 0.0
+    for t in txns
+        if t["type"] == "income"
+            bal = bal + t["amount"]
+        else
+            bal = bal - t["amount"]
+    return bal
+
+fn get_monthly(txns: list, year: int, month: int) -> list
+    let result = []
+    for t in txns
+        let parts = t["date"].split("-")
+        if int(parts[0]) == year
+            if int(parts[1]) == month
+                result.append(t)
+    return result
+
+fn get_category_totals(txns: list) -> dict
+    let totals = {}
+    for t in txns
+        let cat = t["category"]
+        if totals.get(cat) == none
+            totals[cat] = 0.0
+        if t["type"] == "expense"
+            totals[cat] = totals[cat] + t["amount"]
+    return totals
+
+fn format_money(amount: float) -> str
+    let s = str(round(amount, 2))
+    if s.find(".") == -1
+        s = s + ".00"
+    let parts = s.split(".")
+    if len(parts[1]) == 1
+        s = s + "0"
+    return s
+
+fn draw_bar(width: int, value: float, max_val: float) -> str
+    if max_val <= 0
+        return ""
+    let filled = int(value / max_val * width)
+    if filled > width
+        filled = width
+    if filled < 0
+        filled = 0
+    let bar = ""
+    for i in 0..filled
+        bar = bar + "█"
+    for i in 0..width - filled
+        bar = bar + "░"
+    return bar
+
+fn app(stdscr)
+    curses.curs_set(0)
+    curses.start_color()
+    curses.use_default_colors()
+    curses.init_pair(1, curses.COLOR_GREEN, -1)
+    curses.init_pair(2, curses.COLOR_RED, -1)
+    curses.init_pair(3, curses.COLOR_YELLOW, -1)
+    curses.init_pair(4, curses.COLOR_CYAN, -1)
+    curses.init_pair(5, curses.COLOR_MAGENTA, -1)
+    curses.init_pair(6, curses.COLOR_WHITE, -1)
+    curses.init_pair(7, curses.COLOR_BLUE, -1)
+
+    let data_path = os.path.expanduser("~/.sym_finance.json")
+    let data = load_data(data_path)
+    let txns = data["transactions"]
+
+    # Add sample data if empty
+    if len(txns) == 0
+        let today = dt.date.today()
+        let m = str(today.month)
+        if len(m) == 1
+            m = "0" + m
+        let prefix = str(today.year) + "-" + m
+        txns.append({"date": prefix + "-01", "type": "income", "amount": 50000.0, "category": "Salary", "note": "Monthly salary"})
+        txns.append({"date": prefix + "-02", "type": "expense", "amount": 12000.0, "category": "Rent", "note": "Monthly rent"})
+        txns.append({"date": prefix + "-03", "type": "expense", "amount": 3500.0, "category": "Food", "note": "Groceries"})
+        txns.append({"date": prefix + "-05", "type": "expense", "amount": 2000.0, "category": "Transport", "note": "Fuel + metro"})
+        txns.append({"date": prefix + "-07", "type": "expense", "amount": 1500.0, "category": "Food", "note": "Restaurants"})
+        txns.append({"date": prefix + "-10", "type": "expense", "amount": 5000.0, "category": "Shopping", "note": "Clothes"})
+        txns.append({"date": prefix + "-12", "type": "income", "amount": 8000.0, "category": "Freelance", "note": "Web project"})
+        txns.append({"date": prefix + "-15", "type": "expense", "amount": 800.0, "category": "Entertainment", "note": "Movie + dinner"})
+        txns.append({"date": prefix + "-18", "type": "expense", "amount": 2500.0, "category": "Bills", "note": "Electricity + internet"})
+        txns.append({"date": prefix + "-20", "type": "expense", "amount": 1200.0, "category": "Food", "note": "Weekly groceries"})
+        data["transactions"] = txns
+        save_data(data_path, data)
+
+    let screen = "dashboard"
+    let scroll = 0
+    let running = 1
+    let msg = ""
+    let input_mode = 0
+    let input_buf = ""
+    let input_field = 0
+    let new_txn = {"date": "", "type": "expense", "amount": "", "category": "", "note": ""}
+    let categories = ["Salary", "Freelance", "Food", "Rent", "Transport", "Shopping", "Bills", "Entertainment", "Health", "Other"]
+
+    while running == 1
+        stdscr.clear()
+        let h = stdscr.getmaxyx()[0]
+        let w = stdscr.getmaxyx()[1]
+
+        # Header
+        let header = " SYMBOLCORE FINANCE "
+        let hx = (w - len(header)) // 2
+        if hx < 0
+            hx = 0
+        stdscr.addstr(0, hx, header, curses.A_BOLD + curses.color_pair(4))
+
+        # Nav bar
+        let nav = " [D]ashboard  [T]ransactions  [A]dd  [C]harts  [Q]uit "
+        stdscr.addstr(1, 0, nav, curses.color_pair(6))
+
+        # Status message
+        if len(msg) > 0
+            stdscr.addstr(h - 1, 0, " " + msg + " ", curses.color_pair(3))
+
+        if screen == "dashboard"
+            # Balance
+            let bal = get_balance(txns)
+            stdscr.addstr(3, 2, "Balance: ", curses.A_BOLD + curses.color_pair(6))
+            if bal >= 0
+                stdscr.addstr(3, 11, "Rs " + format_money(bal), curses.A_BOLD + curses.color_pair(1))
+            else
+                stdscr.addstr(3, 11, "Rs " + format_money(bal), curses.A_BOLD + curses.color_pair(2))
+
+            # Income / Expense totals
+            let total_in = 0.0
+            let total_out = 0.0
+            for t in txns
+                if t["type"] == "income"
+                    total_in = total_in + t["amount"]
+                else
+                    total_out = total_out + t["amount"]
+
+            stdscr.addstr(5, 2, "Income:  ", curses.color_pair(6))
+            stdscr.addstr(5, 11, "Rs " + format_money(total_in), curses.color_pair(1))
+            stdscr.addstr(6, 2, "Expense: ", curses.color_pair(6))
+            stdscr.addstr(6, 11, "Rs " + format_money(total_out), curses.color_pair(2))
+            stdscr.addstr(7, 2, "Savings: ", curses.color_pair(6))
+            let savings = total_in - total_out
+            if savings >= 0
+                stdscr.addstr(7, 11, "Rs " + format_money(savings) + " (" + str(int(savings / total_in * 100)) + "%)", curses.color_pair(1))
+            else
+                stdscr.addstr(7, 11, "Rs " + format_money(savings), curses.color_pair(2))
+
+            # Recent transactions
+            stdscr.addstr(9, 2, "Recent Transactions:", curses.A_BOLD + curses.color_pair(4))
+            stdscr.addstr(10, 2, "-" * (w - 4), curses.color_pair(6))
+
+            let show_count = h - 13
+            if show_count > len(txns)
+                show_count = len(txns)
+            let start_idx = len(txns) - show_count
+            if start_idx < 0
+                start_idx = 0
+
+            let row = 11
+            for i in range(start_idx, len(txns))
+                if row >= h - 2
+                    break
+                let t = txns[i]
+                let date_str = t["date"]
+                let cat = t["category"]
+                let amount = format_money(t["amount"])
+                let note = t["note"]
+
+                stdscr.addstr(row, 2, date_str, curses.color_pair(6))
+                if len(cat) > 12
+                    cat = cat[0:12]
+                stdscr.addstr(row, 14, cat, curses.color_pair(5))
+
+                if t["type"] == "income"
+                    stdscr.addstr(row, 28, "+Rs " + amount, curses.color_pair(1))
+                else
+                    stdscr.addstr(row, 28, "-Rs " + amount, curses.color_pair(2))
+
+                let max_note = w - 46
+                if max_note > 0
+                    if len(note) > max_note
+                        note = note[0:max_note]
+                    stdscr.addstr(row, 44, note, curses.color_pair(6))
+                row = row + 1
+
+        elif screen == "transactions"
+            stdscr.addstr(3, 2, "All Transactions (" + str(len(txns)) + ")", curses.A_BOLD + curses.color_pair(4))
+            stdscr.addstr(4, 2, "DATE        CATEGORY      AMOUNT        NOTE", curses.A_BOLD + curses.color_pair(6))
+            stdscr.addstr(5, 2, "-" * (w - 4), curses.color_pair(6))
+
+            let row = 6
+            let end = scroll + h - 9
+            if end > len(txns)
+                end = len(txns)
+            for i in range(scroll, end)
+                if row >= h - 2
+                    break
+                let t = txns[i]
+                let cat = t["category"]
+                if len(cat) > 12
+                    cat = cat[0:12]
+                stdscr.addstr(row, 2, t["date"], curses.color_pair(6))
+                stdscr.addstr(row, 14, cat, curses.color_pair(5))
+                if t["type"] == "income"
+                    stdscr.addstr(row, 28, "+Rs " + format_money(t["amount"]), curses.color_pair(1))
+                else
+                    stdscr.addstr(row, 28, "-Rs " + format_money(t["amount"]), curses.color_pair(2))
+                let n = t["note"]
+                let mx = w - 46
+                if mx > 0
+                    if len(n) > mx
+                        n = n[0:mx]
+                    stdscr.addstr(row, 44, n, curses.color_pair(6))
+                row = row + 1
+
+            stdscr.addstr(h - 2, 2, "Up/Down: scroll | D: delete last | B: back", curses.color_pair(6))
+
+        elif screen == "charts"
+            stdscr.addstr(3, 2, "Spending by Category", curses.A_BOLD + curses.color_pair(4))
+            stdscr.addstr(4, 2, "-" * (w - 4), curses.color_pair(6))
+
+            let totals = get_category_totals(txns)
+            let max_val = 0.0
+            for cat in totals
+                if totals[cat] > max_val
+                    max_val = totals[cat]
+
+            let row = 5
+            let bar_w = w - 35
+            if bar_w < 10
+                bar_w = 10
+            let colors = [1, 2, 3, 4, 5, 7]
+            let ci = 0
+            for cat in sorted(totals.keys())
+                if row >= h - 3
+                    break
+                let val = totals[cat]
+                let bar = draw_bar(bar_w, val, max_val)
+                let label = cat
+                if len(label) > 12
+                    label = label[0:12]
+                while len(label) < 13
+                    label = label + " "
+
+                let color = colors[ci % len(colors)]
+                ci = ci + 1
+
+                stdscr.addstr(row, 2, label, curses.A_BOLD + curses.color_pair(color))
+                stdscr.addstr(row, 15, bar, curses.color_pair(color))
+                stdscr.addstr(row, 16 + bar_w, "Rs " + format_money(val), curses.color_pair(6))
+                row = row + 1
+
+            # Total
+            let total_exp = 0.0
+            for cat in totals
+                total_exp = total_exp + totals[cat]
+            row = row + 1
+            if row < h - 2
+                stdscr.addstr(row, 2, "TOTAL SPENT: Rs " + format_money(total_exp), curses.A_BOLD + curses.color_pair(2))
+
+            stdscr.addstr(h - 2, 2, "B: back to dashboard", curses.color_pair(6))
+
+        elif screen == "add"
+            stdscr.addstr(3, 2, "Add Transaction", curses.A_BOLD + curses.color_pair(4))
+            stdscr.addstr(4, 2, "-" * 40, curses.color_pair(6))
+
+            let fields = ["Date (YYYY-MM-DD)", "Type (income/expense)", "Amount", "Category", "Note"]
+            let vals = [new_txn["date"], new_txn["type"], new_txn["amount"], new_txn["category"], new_txn["note"]]
+
+            for i in range(0, 5)
+                let label = fields[i] + ": "
+                if i == input_field
+                    stdscr.addstr(6 + i * 2, 2, label, curses.A_BOLD + curses.color_pair(3))
+                    stdscr.addstr(6 + i * 2, 2 + len(label), vals[i] + "_", curses.color_pair(3))
+                else
+                    stdscr.addstr(6 + i * 2, 2, label, curses.color_pair(6))
+                    stdscr.addstr(6 + i * 2, 2 + len(label), vals[i], curses.color_pair(4))
+
+            # Category suggestions
+            stdscr.addstr(17, 2, "Categories: " + ", ".join(categories), curses.color_pair(5))
+            stdscr.addstr(19, 2, "Tab: next field | Enter: save | Esc: cancel", curses.color_pair(6))
+
+            if input_mode == 1
+                curses.curs_set(1)
+            else
+                curses.curs_set(0)
+
+        stdscr.refresh()
+
+        # Input
+        let key = stdscr.getch()
+
+        if screen == "add"
+            if key == 27
+                screen = "dashboard"
+                input_mode = 0
+                curses.curs_set(0)
+                new_txn = {"date": "", "type": "expense", "amount": "", "category": "", "note": ""}
+                input_field = 0
+            elif key == 9
+                input_field = (input_field + 1) % 5
+            elif key == 10
+                # Save transaction
+                if len(new_txn["date"]) > 0
+                    if len(new_txn["amount"]) > 0
+                        try
+                            let amt = float(new_txn["amount"])
+                            let t = {"date": new_txn["date"], "type": new_txn["type"], "amount": amt, "category": new_txn["category"], "note": new_txn["note"]}
+                            if len(t["category"]) == 0
+                                t["category"] = "Other"
+                            if len(t["date"]) < 10
+                                let today = dt.date.today()
+                                t["date"] = str(today)
+                            txns.append(t)
+                            data["transactions"] = txns
+                            save_data(data_path, data)
+                            msg = "Transaction added!"
+                            screen = "dashboard"
+                            input_mode = 0
+                            curses.curs_set(0)
+                            new_txn = {"date": "", "type": "expense", "amount": "", "category": "", "note": ""}
+                            input_field = 0
+                        catch e
+                            msg = "Invalid amount!"
+                    else
+                        msg = "Amount required!"
+                else
+                    msg = "Date required!"
+            elif key == curses.KEY_BACKSPACE or key == 127 or key == 8
+                let fnames = ["date", "type", "amount", "category", "note"]
+                let fname = fnames[input_field]
+                if len(new_txn[fname]) > 0
+                    new_txn[fname] = new_txn[fname][0:len(new_txn[fname]) - 1]
+            elif key >= 32
+                if key < 127
+                    let fnames = ["date", "type", "amount", "category", "note"]
+                    let fname = fnames[input_field]
+                    new_txn[fname] = new_txn[fname] + chr(key)
+                    input_mode = 1
+        else
+            if key == 113 or key == 81
+                running = 0
+            elif key == 100 or key == 68
+                if screen == "transactions"
+                    # Delete last transaction
+                    if len(txns) > 0
+                        txns.pop()
+                        data["transactions"] = txns
+                        save_data(data_path, data)
+                        msg = "Last transaction deleted"
+                else
+                    screen = "dashboard"
+                    msg = ""
+            elif key == 116 or key == 84
+                screen = "transactions"
+                scroll = 0
+                msg = ""
+            elif key == 97 or key == 65
+                screen = "add"
+                input_mode = 1
+                input_field = 0
+                let today = dt.date.today()
+                new_txn["date"] = str(today)
+                msg = ""
+            elif key == 99 or key == 67
+                screen = "charts"
+                msg = ""
+            elif key == 98 or key == 66
+                screen = "dashboard"
+                msg = ""
+            elif key == curses.KEY_UP
+                if scroll > 0
+                    scroll = scroll - 1
+            elif key == curses.KEY_DOWN
+                if scroll < len(txns) - 1
+                    scroll = scroll + 1
+
+    return 0
+
+# Run
+let result = curses.wrapper(app)
+print ""
+print "  Sym Finance — Data saved to ~/.sym_finance.json"
+print ""

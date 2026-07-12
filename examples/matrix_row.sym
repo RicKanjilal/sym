@@ -1,0 +1,34 @@
+# .sym as consumer of every provider — the language's own matrix row
+java.import java.lang.Math as JMath
+let a = JMath.pow(2, 5)
+print "java={a}"
+
+js.import textkit
+let b = textkit.shout("x")
+print "js={b}"
+
+sym.import math
+let c = math.sqrt(81)
+print "python={c}"
+
+php> { $sym["php"] = strtoupper("sym"); return null; }
+let d = sym_get("php")
+print "php={d}"
+
+ruby> { sym["rb"] = Math.sqrt(144) }
+let e = sym_get("rb")
+print "ruby={e}"
+
+r> { sym$r <- mean(c(1, 2, 3, 4, 5)) }
+let f = sym_get("r")
+print "r={f}"
+
+perl> { use POSIX; $sym{p} = POSIX::floor(3.7); 1; }
+let g = sym_get("p")
+print "perl={g}"
+
+c.import m as libm
+let h = libm.call("sqrt", [2.0], "double")
+print "c={h}"
+
+print "MATRIX_ROW_OK sym"

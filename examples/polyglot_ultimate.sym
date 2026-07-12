@@ -1,0 +1,85 @@
+# ═══════════════════════════════════════════════════════════
+#  ONE FILE. EIGHT ECOSYSTEMS. ONE HOST.
+#  Python · JS · Java · PHP · Ruby · R · Go · Rust · C
+#  Nobody talks to anybody. Everybody talks to Sym.
+# ═══════════════════════════════════════════════════════════
+
+sym_set("numbers", [4, 8, 15, 16, 23, 42])
+
+# ── the registry: import by name, Sym finds the ecosystem ──
+sym.import numpy
+let m = numpy.mean([10, 20, 30, 40])
+print "registry -> python   numpy.mean       = {m}"
+
+java.import java.lang.Math as JMath
+let pw = JMath.pow(3, 9)
+print "java                 Math.pow(3,9)    = {pw}"
+
+# ── c: native libraries through FFI ──
+c.import m as libm
+let root = libm.call("sqrt", [1764.0], "double")
+print "c (libm)             sqrt(1764)       = {root}"
+
+c.import sqlite3 as sq
+let v = sq.call("sqlite3_libversion", [], "str")
+print "c (sqlite)           version          = {v}"
+
+# ── every runtime touches the same shared data ──
+js> {
+  sym.trace = ["js"];
+  sym.doubled = sym.numbers.map(x => x * 2);
+}
+
+php> {
+  $sym["trace"][] = "php";
+  $sym["php_sum"] = array_sum($sym["doubled"]);
+  return null;
+}
+
+ruby> {
+  sym["trace"] << "ruby"
+  sym["ruby_desc"] = sym["doubled"].sort.reverse
+}
+
+r> {
+  sym$trace <- c(unlist(sym$trace), "r")
+  sym$r_sd <- sd(unlist(sym$doubled))
+}
+
+go> {
+    xs := symNums("doubled")
+    t := 0.0
+    for _, x := range xs { t += x * x }
+    symSet("go_sumsq", t)
+}
+
+rust> {
+    let xs = sym.get("doubled").as_f64s();
+    let max = xs.iter().cloned().fold(f64::MIN, f64::max);
+    sym.set("rust_max", J::num(max));
+}
+
+java> {
+  java.util.List<Object> t = (java.util.List<Object>) sym.get("trace");
+  t.add("java");
+  sym.put("trace", t);
+}
+
+let doubled = sym_get("doubled")
+let php_sum = sym_get("php_sum")
+let ruby_desc = sym_get("ruby_desc")
+let r_sd = sym_get("r_sd")
+let go_sq = sym_get("go_sumsq")
+let rust_max = sym_get("rust_max")
+let trace = sym_get("trace")
+
+print ""
+print "js   doubled the list        -> {doubled}"
+print "php  summed it               -> {php_sum}"
+print "ruby sorted it descending    -> {ruby_desc}"
+print "r    computed std deviation  -> {r_sd}"
+print "go   sum of squares          -> {go_sq}"
+print "rust found the max           -> {rust_max}"
+print "trace of runtimes touched    -> {trace}"
+print ""
+print "one .sym file. one shared space. eight ecosystems. Sym is the host."

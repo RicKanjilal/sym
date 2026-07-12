@@ -1,0 +1,21 @@
+# A SYMBOLCORE program — the home language — borrowing everyone.
+sym.import statistics
+let sales = [984, 1250, 872, 1490, 1105]
+let mean = statistics.mean(sales)
+
+r> { sym$sd <- sd(c(984, 1250, 872, 1490, 1105)) }
+let sd = sym_get("sd")
+
+java.import java.util.UUID
+let u = UUID.randomUUID()
+let id = u.toString()
+
+c.import m as libm
+let root = libm.call("sqrt", [mean], "double")
+
+print "SALES REPORT (sym edition)"
+print "  mean       = {mean}   (Python)"
+print "  sd         = {sd}   (R)"
+print "  uuid       = {id}   (Java)"
+print "  sqrt(mean) = {root}   (C libm)"
+print "SYM importing Python, R, Java, C: OK"

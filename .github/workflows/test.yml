@@ -1,0 +1,86 @@
+name: battery
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  full-battery-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: Install ecosystem runtimes
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q php-cli ruby r-base-core rustc gcc
+          sudo Rscript -e 'install.packages("jsonlite", repos="https://cloud.r-project.org")'
+      - name: Language core (19)
+        run: python3 tests/test_compiler.py
+      - name: Bridge suite (21)
+        run: python3 tests/test_bridge.py
+      - name: Deep suite (42)
+        run: python3 tests/test_deep.py
+      - name: THE MATRIX (80 cells)
+        run: python3 tests/test_matrix.py
+      - name: Showcase (10 languages)
+        run: |
+          export SYM_HOME="$GITHUB_WORKSPACE"
+          cd showcase && ./run_all.sh
+
+  core-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      # macOS runners lack php/ruby-versions/R by default in predictable ways;
+      # suites auto-skip missing runtimes — this job proves the CORE runs on macOS
+      - name: Language core
+        run: python3 tests/test_compiler.py
+      - name: Bridge suite (auto-skips missing runtimes)
+        run: python3 tests/test_bridge.py
+      - name: Deep suite (auto-skips missing runtimes)
+        run: python3 tests/test_deep.py
+
+  pip-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build + install the pip package
+        run: |
+          pip install build
+          ./packaging/build_pip.sh
+      - name: pip package smoke test (bare machine, no SYM_HOME)
+        run: |
+          cd /tmp
+          python3 -c "import sym; assert sym.call('java','java.lang.Math.pow',[2,10])==1024.0; sym.close(); print('pip core OK')"

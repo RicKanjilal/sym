@@ -1,0 +1,10 @@
+{
+  "name": "rickanjilal/sym",
+  "description": "Sym client for PHP - use any language's libraries from PHP",
+  "type": "library",
+  "license": "MIT",
+  "authors": [{ "name": "Ric Kanjilal" }],
+  "require": { "php": ">=8.0" },
+  "autoload": { "files": ["clients/php/sym.php"] },
+  "homepage": "https://github.com/RicKanjilal/sym"
+}

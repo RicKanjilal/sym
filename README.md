@@ -1,370 +1,270 @@
 <div align="center">
 
-[![battery](https://github.com/RicKanjilal/sym/actions/workflows/test.yml/badge.svg)](https://github.com/RicKanjilal/sym/actions/workflows/test.yml)
-
 # Sym ⚡
 
-### *The polyglot host. One file, ten ecosystems — none of them know the others exist.*
+### *Every library. Every language. No walls.*
 
-<br>
+[![battery](https://github.com/RicKanjilal/sym/actions/workflows/test.yml/badge.svg)](https://github.com/RicKanjilal/sym/actions/workflows/test.yml)
+![matrix](https://img.shields.io/badge/matrix-80%2F80_green-22c55e?style=flat-square&labelColor=000)
+![ecosystems](https://img.shields.io/badge/ecosystems-10-7c5cff?style=flat-square&labelColor=000)
+![license](https://img.shields.io/badge/license-MIT-93c5fd?style=flat-square&labelColor=000)
 
-<p>
-  <img src="https://img.shields.io/badge/Built_in-Class_10-22c55e?style=for-the-badge&labelColor=000" />
-  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white&labelColor=000" />
-  <img src="https://img.shields.io/badge/C-A8B9CC?style=for-the-badge&logo=c&logoColor=black&labelColor=000" />
-  <img src="https://img.shields.io/badge/lines_of_code-~4k-7c5cff?style=for-the-badge&labelColor=000" />
-  <img src="https://img.shields.io/badge/license-MIT-93c5fd?style=for-the-badge&labelColor=000" />
-</p>
+[![demo](https://asciinema.org/a/QHtQEfsmSTwf8YsX.svg)](https://asciinema.org/a/QHtQEfsmSTwf8YsX)
 
-<br>
+*Ten languages. One program. Same run.*
 
 </div>
 
-## What this is
+---
 
-Sym is a programming language I designed and built. Files use the `.sym` extension. The compiler is written in Python, lives in this repo, and produces two outputs:
+Your Python can't use Apache Lucene. Your Ruby can't touch ggplot2. Your Go can't call numpy.
 
-1. **Python code** for any function that touches the Python ecosystem (numpy, pandas, requests, anything `pip`-installable)
-2. **C shared libraries** for any function that's *pure* (only does math, no Python deps)
+Says who?
 
-The compiler analyzes every function for purity, then routes the pure ones through C codegen for native speed while keeping Python-dependent ones as Python. They talk via `ctypes`. The user just runs `sym run file.sym` and never thinks about it.
+```python
+import sym
 
-The language has three syntax modes (Normal, Compact, Symbol) that all parse to the same AST. Whichever style you find readable is the one you write. Performance and behavior are identical.
+lucene = sym.java.package("org.apache.lucene")   # Java's search engine
+np     = sym.imp("numpy")                        # Python's own
+ggplot = sym.r("ggplot2")                        # R's finest
+gson   = sym.java("com.google.gson.Gson")()      # a LIVE Java object, held in Python
+
+# same file. same breath.
+```
+
+Not ports. Not reimplementations. **The actual libraries**, running in their own real runtimes, called from yours.
+
+## The party trick: real React, from Python
+
+```python
+import sym
+
+React  = sym.js("react")
+Server = sym.js("react-dom/server")
+
+page = React.createElement("h1", None, "rendered by React. called from Python. yes, really.")
+print(Server.renderToString(page))
+# <h1>rendered by React. called from Python. yes, really.</h1>
+```
+
+That's React — the real one, from npm, running in Node — driven from a `.py` file.
 
 ## THE MATRIX
 
-Every language below can **consume** every library ecosystem below. 80/80 cells, tested:
+Every row can use every column's libraries. 80 out of 80 cells, green in CI on Linux **and** macOS.
 
 ```
               java     js  python    php   ruby      r   perl      c
-  sym           ✅     ✅     ✅     ✅     ✅     ✅     ✅     ✅
   python        ✅     ✅     ✅     ✅     ✅     ✅     ✅     ✅
   node          ✅     ✅     ✅     ✅     ✅     ✅     ✅     ✅
   ruby          ✅     ✅     ✅     ✅     ✅     ✅     ✅     ✅
-  php           ✅     ✅     ✅     ✅     ✅     ✅     ✅     ✅
-  perl          ✅     ✅     ✅     ✅     ✅     ✅     ✅     ✅
-  r             ✅     ✅     ✅     ✅     ✅     ✅     ✅     ✅
-  java          ✅     ✅     ✅     ✅     ✅     ✅     ✅     ✅
-  go            ✅     ✅     ✅     ✅     ✅     ✅     ✅     ✅
   rust          ✅     ✅     ✅     ✅     ✅     ✅     ✅     ✅
+  go            ✅     ✅     ✅     ✅     ✅     ✅     ✅     ✅
+  java          ✅     ✅     ✅     ✅     ✅     ✅     ✅     ✅
+  php           ✅     ✅     ✅     ✅     ✅     ✅     ✅     ✅
+  r             ✅     ✅     ✅     ✅     ✅     ✅     ✅     ✅
+  perl          ✅     ✅     ✅     ✅     ✅     ✅     ✅     ✅
+  sym           ✅     ✅     ✅     ✅     ✅     ✅     ✅     ✅
 ```
 
-Rows are consumers, columns are providers. A Ruby script using numpy. A Go
-binary holding a live Java object. R calling PHP. **Ten consumers, eight
-provider ecosystems, one hub, and zero direct language-to-language
-connections** — that's why this is 18 small programs instead of 80 bridges.
-Reproduce it yourself: `python3 tests/test_matrix.py`
+*(rows = who's asking · columns = whose library)*
 
-And `showcase/run_all.sh` runs the same real program in **ten languages** —
-each one borrowing Python's statistics, R's `sd`, Java's UUID, PHP's
-formatting, and C's libm. A Rust binary importing four interpreted
-ecosystems. An R script holding a Java object. Ten authors, one library
-universe.
+A Ruby script using numpy. A Go binary holding a live Java object. R calling PHP. Reproduce it yourself:
 
-Clients: `clients/{python,node,ruby,php,perl,r,java,go,rust}` — each under
-~300 lines, each speaking the same newline-JSON protocol to one hub.
-
-## The headline: SymBridge
-
-```
-sym.import numpy                      # Python answers
-
-java.import math.Calculator           # a live JVM answers
-let c = Calculator()                  # a real Java object — Sym holds handle #1
-let sum = c.add(5, 8)
-
-js> {
-  sym.doubled = sym.numbers.map(x => x * 2);     // real Node
-}
-
-r> {
-  sym$sd <- sd(unlist(sym$doubled))              // real R
-}
-
-rust> {
-  let m = sym.get("doubled").as_f64s().iter().cloned().fold(f64::MIN, f64::max);
-  sym.set("max", J::num(m));                     // compiled once, cached, native
-}
+```bash
+python3 tests/test_matrix.py
 ```
 
-**None of these runtimes know about each other.** Python never sees Java. R never sees Rust. Every runtime is a worker process that Sym launches, owns, and shuts down — and every value that crosses a boundary becomes a **Symbol Object**, a neutral form all of them can read. One shared space (`sym`), one protocol (JSON lines, readable in an evening), ten ecosystems:
+## Install
 
-| | Import | Blocks | Live objects |
-|---|---|---|---|
-| Python | `sym.import numpy` (in-host, full fidelity) | `python> {}` | native |
-| JavaScript | `js.import lodash` | `js> {}` | ✅ handles |
-| Java | `java.import math.Calculator` | `java> {}` | ✅ handles + overload scoring |
-| PHP | `php.import mylib` | `php> {}` | — |
-| Ruby | `ruby.import mylib` | `ruby> {}` | — |
-| R | `r.import ggplot2` | `r> {}` | — |
-| Perl | `perl.import POSIX` | `perl> {}` | — |
-| Go | — | `go> {}` compiled+cached | — |
-| Rust | — | `rust> {}` compiled+cached | — |
-| C | `c.import sqlite3` (FFI) | — | — |
+The Python package is the engine. Every other language is a thin client that finds it.
 
-And Sym isn't only a language — it's **middleware**. The same broker is available from plain Python or Node:
-
-```python
-import sym                                 # any .py file, anywhere
-lst = sym.java("java.util.ArrayList")()    # construct a live Java object
-lst.add("hello")
-sym.block("ruby", 'sym["x"] = "from ruby"')
+```bash
+pip install sym-lang                    # the core → `import sym` + the `sym` CLI
 ```
 
-Full architecture, honest limits included: [docs/BRIDGE.md](docs/BRIDGE.md)
+```bash
+npm install symlang                     # Node
+cargo add sym-bridge                    # Rust
+gem install sym-lang                    # Ruby
+composer require rickanjilal/sym        # PHP
+go get github.com/RicKanjilal/sym/clients/go
+# R:    remotes::install_github("RicKanjilal/sym", subdir="clients/r")
+# Java: JitPack — com.github.RicKanjilal:sym:v0.2.0
+```
+
+Grab libraries from any ecosystem with one command:
+
+```bash
+sym add numpy              # pip
+sym add js:lodash          # npm
+sym add java:lucene        # Maven, with transitive deps
+sym add ruby:nokogiri      # gem
+sym add r:ggplot2          # CRAN
+```
+
+## How it actually works
+
+No magic — a broker and a neutral format.
+
+```
+                    ┌──────────────┐
+   your program ──► │  SYM  (host) │
+                    │  the broker  │
+                    └──┬────┬───┬──┘
+             Symbol    │    │   │    Symbol
+             Objects   │    │   │    Objects
+                   ┌───▼─┐┌─▼──┐┌▼────┐
+                   │ JVM ││Node││ R … │   ← real runtimes,
+                   └─────┘└────┘└─────┘     launched and owned by Sym
+```
+
+- Each language runs as a **worker process** Sym launches, owns, and shuts down.
+- Values crossing a boundary become **Symbol Objects** — a neutral JSON form every language can read.
+- Live objects never move. They stay in their runtime and travel as **handles**; method calls route back to where the object lives. When your variable dies, so does the object (distributed GC).
+- One protocol: newline-delimited JSON, small enough to read in an evening → [`docs/BRIDGE.md`](docs/BRIDGE.md)
+
+**Ten consumers × eight providers = 80 combinations, from 18 small programs** — because nobody talks to anybody. Everybody talks to Sym.
+
+### Honest limits (physics, not laziness)
+
+- The **callable surface** of a library bridges: functions, methods, objects, data.
+- **Environments** don't — React's browser event loop, a game engine, a framework that wants to own your process. No system crosses that, Sym included.
+- No callbacks (foreign code calling back into you) or cross-language inheritance yet.
+- Every boundary crossing is a real round trip (~0.1–1 ms). Put the hot loop *inside* the block, not across it.
 
 ## The test battery
 
 ```
 python3 tests/test_compiler.py   # 19  — language core
 python3 tests/test_bridge.py     # 21  — every ecosystem, handles, clients
-python3 tests/test_deep.py       # 39  — unicode, 2^53 longs, error recovery,
+python3 tests/test_deep.py       # 42  — unicode, 2^53 longs, error recovery,
                                  #       stale handles, adversarial parsing
 python3 tests/test_matrix.py     # 80  — every consumer × every provider
-showcase/run_all.sh              # 10  — real programs in ten languages
+showcase/run_all.sh              # 10  — the same real program in ten languages
 ```
 
-159 checks + 10 programs. Workers must survive their own crashes; Bengali
-and emoji must cross every boundary intact; a `}` inside a string must not
-break the parser (it did — the deep suite caught it before you could).
+172 checks + 10 programs, every push, on Linux and macOS. Workers must survive their own crashes. Bengali and emoji must cross every boundary intact. A `}` inside a string must not break the parser — it did, once, and the deep suite caught it before you could.
 
-## Quick start
+---
 
-```bash
-./install.sh                     # detects your runtimes, installs to ~/.sym
-cd ~/.sym/examples
-sym run polyglot_ultimate.sym    # eight ecosystems, one file
-python3 ../tests/test_bridge.py  # the suite that keeps it honest
-```
+# Chapter two: `.sym`, the language
 
-## Why I built this
+Sym started as a language before it became a host, and the language is still here.
 
-I'd been wanting to build a real programming language for years. My first attempt was [Pytson 1.0](https://github.com/RicKanjilal/Pytson1.0), in Class 5, following David Callanan's interpreter tutorial on YouTube. That was tutorial-following work and produced a basic interpreter.
+Files use `.sym`. The compiler is Python, lives in this repo, and emits **two** things:
 
-Sym is the version of that idea built five years later, with the questions I actually wanted to answer:
+1. **Python** for any function that touches the Python ecosystem
+2. **C shared libraries** for any function that's *pure* — only math, no Python deps
 
-- *What if writing Python could feel less verbose without being unreadable?* → three syntax modes that all parse to the same code. Pick your style.
-- *What if a high-level language could give native speed without making the user think about it?* → automatic purity analysis routes pure functions to C, everything else stays Python.
-- *What if importing libraries from the Python ecosystem just worked, without a separate package manager?* → `import py.numpy` triggers an automatic `pip install` if numpy isn't there.
+You don't annotate anything. The compiler walks the AST, tags each function, routes the pure ones through C codegen, and wires them together with `ctypes`. You just run `sym run file.sym`.
 
-Every design decision in Sym traces back to one of those three questions. They're the questions I started with. Whether they make sense as a real product is a different conversation.
+### Speed you didn't ask for
 
-## How this was built
+| Test | Pure Python | Native C | Speedup |
+|------|-------------|----------|---------|
+| `fib(35)` | 1778 ms | 29 ms | **62×** |
+| `sum_squares(1M)` | 166 ms | <0.1 ms | **>1000×** |
+| `count_primes(100K)` | 228 ms | 46 ms | **5×** |
+| Combined | 1900 ms | 33 ms | **57×** |
 
-I want to be transparent about my process because it matters for understanding what this project is.
+The speedup isn't the interesting part — that's just C being C. The interesting part is that you got it without writing C, choosing a decorator, or knowing it happened.
 
-**I drove the design.** The three-syntax-mode architecture, the hybrid Python/C compilation idea, purity analysis as the gating mechanism for C codegen, the `py.` prefix for auto-install Python imports, the AST that all three modes parse to. Every architectural decision came from me, often after multiple iterations. I read about how real compilers work (LLVM tutorials, Crafting Interpreters, the Mojo design docs) and made choices about which patterns fit my goals.
+### Three syntax modes, one AST
 
-**Most of the implementation typing was done by Claude (Anthropic's coding assistant).** I worked with it across multiple sessions, specifying what each module should do, reviewing the output, requesting changes. The lexer, the recursive-descent parser, the two codegens, the purity analyzer's actual implementation, were collaborative. I can read all of it, modify all of it, explain all of it.
-
-This is how I work on code now. It's how a lot of professional engineers work in 2026. I'm noting it explicitly because I think it matters that you know, both for understanding the project and for understanding me as an engineer. The design is mine. The execution was collaborative. The understanding is mine.
-
-If you fork this and ask me a question about why something works the way it does, I can answer.
-
-## The three syntax modes
-
-All three parse to the same abstract syntax tree. Zero performance difference. Whichever you find readable is the one you write.
-
-### Normal mode
-
-Looks like Python with explicit types and `fn` instead of `def`.
+Same program, same speed, same generated code. Pick whichever you find readable.
 
 ```sym
-fn fibonacci(n: int) -> int
+fn fibonacci(n: int) -> int          # Normal
     if n <= 1
         return n
     return fibonacci(n - 1) + fibonacci(n - 2)
 ```
 
-### Compact mode (`#compact` directive)
-
-Single-character keywords for the people who like terse code.
-
 ```sym
 #compact
-
-f fib(n: int) -> int
+f fib(n: int) -> int                 # Compact
     ? n <= 1
         <- n
     <- fib(n - 1) + fib(n - 2)
 ```
 
-Mappings: `f`=fn, `?`=if, `??`=elif, `!`=else, `~`=for, `~~`=while, `>>`=print, `<<`=import, `<-`=return, `@`=let.
-
-### Symbol mode (`#symbol` directive)
-
-Real mathematical notation. For when you want your fibonacci function to look like the one in a textbook.
-
 ```sym
 #symbol
-
-ƒ fib(n:ℤ) → ℤ
+ƒ fib(n:ℤ) → ℤ                       # Symbol — yes, this compiles
     ? n ≤ 1
         ← n
     ← fib(n-1) + fib(n-2)
 ```
 
-Mappings: `ƒ`=fn, `←`=return, `→`=arrow, `∀`=for, `⟳`=while, `⊂`=import, `⊕`=print, `≤`=<=, `≥`=>=, `ℤ`=int, `ℝ`=float, `𝔹`=bool, `𝕊`=str. Inherits compact-mode shortcuts.
-
-## The hybrid compilation idea
-
-This is the part of the project I find most interesting.
-
-Most languages force you to pick: either you're fast (C, Rust, Go) or you have a rich ecosystem (Python, JavaScript). The crossover languages (Cython, Mojo, Codon) try to bridge this with various tradeoffs. Sym tries one specific approach: **let the compiler decide on a per-function basis.**
-
-When you write:
+### Polyglot, natively
 
 ```sym
-fn calculate_fib(n: int) -> int
-    if n <= 1
-        return n
-    return calculate_fib(n - 1) + calculate_fib(n - 2)
+sym.import numpy                     # the registry finds it
 
-fn fetch_data(url: str)
-    import py.requests as req
-    return req.get(url).json()
+java.import math.Calculator          # a live JVM answers
+let c = Calculator()                 # a real Java object — Sym holds the handle
+let sum = c.add(5, 8)
+
+js> {
+  sym.doubled = sym.numbers.map(x => x * 2);      // real Node
+}
+
+r> {
+  sym$sd <- sd(unlist(sym$doubled))               // real R
+}
+
+rust> {
+  let m = sym.get("doubled").as_f64s().iter().cloned().fold(f64::MIN, f64::max);
+  sym.set("max", J::num(m));                      // compiled once, cached, native
+}
 ```
 
-The compiler analyzes both functions:
-
-- `calculate_fib` is **pure**: integer math, no Python imports, no string manipulation, no dynamic types. Compile to C.
-- `fetch_data` is **impure**: imports a Python library, returns dynamic JSON. Keep as Python.
-
-You don't annotate this. You don't pick. The compiler walks the AST and tags each function. Pure ones become entries in a generated C file, compiled with gcc into `_sym_native.so`. Impure ones become Python functions that look up the C ones via ctypes when they need to call them.
-
-The `.so` is cached. Re-running unchanged code is instant.
-
-### Real benchmarks (Pop!_OS, Python 3.12, gcc 13.3.0)
-
-| Test | What it does | Pure Python | Native C | Speedup |
-|------|--------------|-------------|----------|---------|
-| `fib(35)` | Naive recursive fibonacci | 1778ms | 29ms | **62x** |
-| `sum_squares(1M)` | Sum of squares 1 to 1,000,000 | 166ms | <0.1ms | **>1000x** |
-| `count_primes(100K)` | Count primes up to 100,000 | 228ms | 46ms | **5x** |
-| **Combined** | All three in sequence | 1900ms | 33ms | **57x** |
-
-The 62x and 1000x numbers aren't surprising. They're what you get any time you replace interpreted Python loops with compiled C. The interesting part isn't the speedup. It's that you got the speedup *without writing any C, choosing any decorator, or knowing this happened*. You ran `sym run file.sym` and the compiler made the routing decision.
-
-## Python interop with auto-install
-
-```sym
-import py.numpy as np
-import py.pandas as pd
-import py.requests as req
-```
-
-The `py.` prefix tells the compiler this is a Python library. If the package is missing, the compiler tries:
-
-1. `pip install --user`
-2. `pip3 install --user`
-3. `sudo apt install python3-<pkg>` (with 30+ name mappings: `cv2` → `opencv-python`, `sklearn` → `scikit-learn`, `bs4` → `beautifulsoup4`, `PIL` → `Pillow`, etc.)
-4. Falls back to clear manual install instructions if all three fail
-
-This was built because I kept running into "no module named X" errors when running other people's Python code, and wanted my language to handle that automatically.
-
-## The test battery
-
-```
-python3 tests/test_compiler.py   # 19  — language core
-python3 tests/test_bridge.py     # 21  — every ecosystem, handles, clients
-python3 tests/test_deep.py       # 39  — unicode, 2^53 longs, error recovery,
-                                 #       stale handles, adversarial parsing
-python3 tests/test_matrix.py     # 80  — every consumer × every provider
-showcase/run_all.sh              # 10  — real programs in ten languages
-```
-
-159 checks + 10 programs. Workers must survive their own crashes; Bengali
-and emoji must cross every boundary intact; a `}` inside a string must not
-break the parser (it did — the deep suite caught it before you could).
-
-## Quick start
+### CLI
 
 ```bash
-git clone https://github.com/RicKanjilal/Symbolcore.git
-cd Symbolcore
-./install.sh
-sym run examples/hello.sym
+sym run file.sym              # hybrid C+Python (default)
+sym run file.sym -v           # verbose — shows what compiled to C
+sym run file.sym --emit       # show generated code
+sym build -t native file.sym  # standalone binary
+sym check file.sym            # purity analysis report
+sym repl                      # interactive REPL
+sym add <pkg>                 # install from any ecosystem
 ```
 
-Requirements:
-- Python 3.8+ (required)
-- gcc or clang (optional, enables C compilation)
+## Why I built this
 
-Without gcc, Sym falls back to pure-Python execution. You lose the speed but everything still runs.
+I'd wanted to build a real language for years. My first attempt was [Pytson 1.0](https://github.com/RicKanjilal/Pytson1.0), in Class 5 — tutorial-following work that produced a basic interpreter.
 
-## CLI
+Sym is that idea five years later, with the questions I actually wanted to answer:
 
-```bash
-sym run file.sym              # Run with hybrid C+Python (default)
-sym run file.sym -v           # Verbose, shows what compiles to C
-sym run file.sym --python     # Force pure Python (debug mode)
-sym run file.sym --emit       # Show generated code
+- *Can a high-level language give native speed without the user thinking about it?* → purity analysis routes pure functions to C.
+- *Can syntax be a preference instead of a law?* → three modes, one AST.
+- *Why should a library's home language decide who's allowed to use it?* → SymBridge. That question ate the whole project, and became the headline.
 
-sym build -t native file.sym  # Compile to standalone binary
-sym build -t c file.sym       # Emit C source
-sym build -t hybrid file.sym  # Build .so + Python wrapper
+## How this was built
 
-sym check file.sym            # Purity analysis report
-sym repl                      # Interactive REPL
-```
+**I drove the design.** The three-syntax-mode architecture, hybrid Python/C compilation gated by purity analysis, the Symbol Object model, Sym-as-host-not-language, object handles, the consumer/provider split that turns 80 bridges into 18 programs — those calls are mine, usually after several wrong turns.
 
-## Project structure
+**Most of the implementation typing was done with Claude.** I specified what each module should do, reviewed output, pushed back, and debugged. The lexer, parser, codegens, workers, and clients were collaborative. I can read all of it, modify all of it, and explain all of it. If you fork this and ask me why something works the way it does, I'll answer.
 
-```
-symbolcore/
-├── bin/sym.py              CLI entry point
-├── compiler/
-│   ├── lexer.py            Tokenizer (handles all 3 syntax modes)
-│   ├── parser.py           Recursive descent parser → AST
-│   ├── ast_nodes.py        AST node dataclasses
-│   ├── codegen_python.py   Python transpiler
-│   ├── codegen_c.py        C transpiler
-│   └── hybrid.py           Purity analyzer + hybrid compiler
-├── runtime/
-│   └── builtins.py         Built-in functions (smart sort, math, IO)
-├── editor/vscode/          VS Code extension (syntax + 30 snippets)
-├── examples/               9 working example programs
-├── tests/                  19 passing tests
-└── docs/                   Full language reference (HTML)
-```
+The design is mine. The execution was collaborative. The understanding is mine.
 
-## Examples included
+## Roadmap
 
-- `hello.sym`. Minimal hello world
-- `compact_mode.sym`. Demos compact syntax
-- `python_interop.sym`. Using numpy and pandas
-- `speed_test.sym`. Runs the benchmark suite
-- `benchmark.sym`. The `benchmark fn` decorator
-- `hybrid_demo.sym`. Pure vs impure functions side by side
-- `web_scraper.sym`. Uses requests + BeautifulSoup
-- `finance.sym`. 404-line finance tracker app with curses UI, file persistence, charts
-- `snake.sym`. Playable Snake game in symbol mode
+Shipped: ten-ecosystem bridge, Symbol Objects, live handles with distributed GC, overload scoring, universal `sym add`, the 80-cell matrix, nine package registries.
 
-## Honest assessment
+Next: auto-free handles in external clients · Windows support · Java varargs · callbacks · facade libraries (`symxl`-style wrappers so `sheet["A1"]` beats fifteen lines of POI).
 
-This is the section that's not in most language READMEs because most language authors are trying to get adopted. I'm not.
-
-**Solo programming languages almost never break through.** Mojo has $100M+ in funding. Cython has 15 years of work. Nim, Zig, V are all struggling for adoption. There's no realistic universe where Sym replaces Python in your workflow.
-
-**The interesting bits aren't the language, they're the techniques.** Specifically: the hybrid C+Python compilation gated by purity analysis. That idea, generalized, could work as a Python library, a `@fast` decorator that compiles pure functions to C automatically. People want their Python faster; they don't want a new language.
-
-**Where this could go.** Extracting the hybrid compiler as a Python library is the realistic next step. Sym as a language is a research project. The compiler underneath is potentially a real tool.
-
-## What I'd do differently in v2
-
-- Extract `compiler/hybrid.py` as a standalone Python package (`@fast` decorator approach)
-- Add type inference so types don't always need to be explicit
-- Better error messages. Current ones are bare-minimum, real languages have rich diagnostics
-- Self-hosting: write parts of Sym in Sym itself
-- LLVM backend instead of C codegen for better optimization
+Never (physics, not laziness): cross-language inheritance · bridging environments.
 
 ## License
 
-MIT. Fork it, extend it, ignore it, ship the `@fast` decorator if I haven't gotten to it yet.
+MIT. Fork it, extend it, ship something better.
 
 ---
 
 <div align="center">
 <sub>Built by <a href="https://github.com/RicKanjilal"><b>Ric Kanjilal</b></a> · Class 10 · Don Bosco School, Liluah · Kolkata</sub><br>
-<sub><i>5-year arc from <a href="https://github.com/RicKanjilal/Pytson1.0">Pytson 1.0</a> (Class 5, tutorial-followed) to here.</i></sub>
+<sub><i>A 5-year arc from <a href="https://github.com/RicKanjilal/Pytson1.0">Pytson 1.0</a> to a runtime that hosts ten ecosystems.</i></sub>
 </div>

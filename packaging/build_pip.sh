@@ -38,7 +38,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sym-lang"
-version = "0.2.0"
+version = "0.2.2"
 description = "Sym - the polyglot host. Use any language's libraries from any language."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -60,7 +60,7 @@ include-package-data = true
 [tool.setuptools.package-data]
 sym_lang = ["core/**/*"]
 TOML
-head -40 README.md > "$STAGE/README.md"
+head -32 README.md > "$STAGE/README.md"
 
 echo "staged at $STAGE"
 cd "$STAGE" && python3 -m pip install . --break-system-packages --quiet 2>/dev/null || python3 -m pip install . --quiet

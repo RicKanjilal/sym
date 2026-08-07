@@ -27,10 +27,18 @@ sub root {
     die "sym: no Sym found (pip install sym-lang, or set SYM_HOME)\n";
 }
 
+sub python {
+    return $ENV{SYM_PYTHON} if $ENV{SYM_PYTHON};
+    for my $py ("python3", "python", "/usr/bin/python3") {
+        return $py if system("$py -c 'import sys' >/dev/null 2>&1") == 0;
+    }
+    die "sym: no working python3 found. Set SYM_PYTHON.\n";
+}
+
 sub ensure {
     return if $PID;
     my $r = root();
-    $PID = open2($IN, $OUT, "python3", "$r/bridge/stdio_host.py");
+    $PID = open2($IN, $OUT, python(), "$r/bridge/stdio_host.py");
 }
 
 sub request {

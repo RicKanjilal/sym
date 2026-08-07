@@ -17,9 +17,21 @@ public class Sym {
     private final Writer out;
     private int id = 0;
 
+    static String python() {
+        String env = System.getenv("SYM_PYTHON");
+        if (env != null && !env.isEmpty()) return env;
+        for (String py : new String[]{"python3", "python", "/usr/bin/python3"}) {
+            try {
+                if (new ProcessBuilder(py, "-c", "import sys").start().waitFor() == 0)
+                    return py;
+            } catch (Exception ignored) { }
+        }
+        throw new RuntimeException("sym: no working python3 found. Set SYM_PYTHON.");
+    }
+
     public Sym() throws IOException {
         String root = findRoot();
-        proc = new ProcessBuilder("python3", root + "/bridge/stdio_host.py")
+        proc = new ProcessBuilder(python(), root + "/bridge/stdio_host.py")
                 .redirectErrorStream(false).start();
         in = new BufferedReader(new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8));
         out = new OutputStreamWriter(proc.getOutputStream(), StandardCharsets.UTF_8);
@@ -31,7 +43,7 @@ public class Sym {
         File home = new File(System.getProperty("user.home"), ".sym");
         if (new File(home, "bridge").isDirectory()) return home.getPath();
         try {
-            Process p = new ProcessBuilder("python3", "-c",
+            Process p = new ProcessBuilder(python(), "-c",
                 "import sym_lang, os; print(os.path.join(os.path.dirname(sym_lang.__file__), 'core'))")
                 .start();
             String core = new String(p.getInputStream().readAllBytes(),

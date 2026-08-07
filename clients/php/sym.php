@@ -40,11 +40,21 @@ class Sym {
         throw new Exception("sym: no Sym found (pip install sym-lang, or set SYM_HOME)");
     }
 
+    private static function python() {
+        $env = getenv("SYM_PYTHON");
+        if ($env) return $env;
+        foreach (["python3", "python", "/usr/bin/python3"] as $py) {
+            @exec("$py -c 'import sys' 2>/dev/null", $o, $rc);
+            if ($rc === 0) return $py;
+        }
+        throw new Exception("sym: no working python3 found. Set SYM_PYTHON.");
+    }
+
     private static function ensure() {
         if (self::$proc) return;
         $root = self::root();
         self::$proc = proc_open(
-            ["python3", "$root/bridge/stdio_host.py"],
+            [self::python(), "$root/bridge/stdio_host.py"],
             [0 => ["pipe", "r"], 1 => ["pipe", "w"], 2 => STDERR],
             self::$pipes);
         register_shutdown_function(fn() => self::close());

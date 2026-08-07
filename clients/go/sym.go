@@ -43,7 +43,7 @@ func findRoot() string {
 	if st, err := os.Stat(filepath.Join(p, "bridge")); err == nil && st.IsDir() {
 		return p
 	}
-	if out, err := exec.Command("python3", "-c",
+	if out, err := exec.Command(symPython(), "-c",
 		"import sym_lang, os; print(os.path.join(os.path.dirname(sym_lang.__file__), 'core'))").Output(); err == nil {
 		core := strings.TrimSpace(string(out))
 		if st, err := os.Stat(filepath.Join(core, "bridge")); err == nil && st.IsDir() {
@@ -53,9 +53,21 @@ func findRoot() string {
 	panic("sym: no Sym found (pip install sym-lang, or set SYM_HOME)")
 }
 
+func symPython() string {
+	if env := os.Getenv("SYM_PYTHON"); env != "" {
+		return env
+	}
+	for _, py := range []string{"python3", "python", "/usr/bin/python3"} {
+		if err := exec.Command(py, "-c", "import sys").Run(); err == nil {
+			return py
+		}
+	}
+	panic("sym: no working python3 found. Set SYM_PYTHON.")
+}
+
 func NewSym() *Sym {
 	root := findRoot()
-	cmd := exec.Command("python3", filepath.Join(root, "bridge", "stdio_host.py"))
+	cmd := exec.Command(symPython(), filepath.Join(root, "bridge", "stdio_host.py"))
 	stdin, _ := cmd.StdinPipe()
 	stdout, _ := cmd.StdoutPipe()
 	cmd.Stderr = os.Stderr

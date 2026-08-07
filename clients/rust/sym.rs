@@ -44,14 +44,28 @@ impl Sym {
                 if std::path::Path::new(&format!("{}/bridge", p)).is_dir() { Some(p) } else { None }
             })
             .or_else(|| {
-                let out = std::process::Command::new("python3")
+                let out = std::process::Command::new(
+                        std::env::var("SYM_PYTHON").unwrap_or_else(|_| "python3".into()))
                     .args(["-c", "import sym_lang, os; print(os.path.join(os.path.dirname(sym_lang.__file__), 'core'))"])
                     .output().ok()?;
                 let core = String::from_utf8_lossy(&out.stdout).trim().to_string();
                 if std::path::Path::new(&format!("{}/bridge", core)).is_dir() { Some(core) } else { None }
             })
             .expect("sym: no Sym found (pip install sym-lang, or set SYM_HOME)");
-        let mut child = Command::new("python3")
+        let py = std::env::var("SYM_PYTHON").ok()
+            .filter(|p| !p.is_empty())
+            .or_else(|| {
+                for cand in ["python3", "python", "/usr/bin/python3"] {
+                    if Command::new(cand).args(["-c", "import sys"])
+                        .stdout(Stdio::null()).stderr(Stdio::null())
+                        .status().map(|s| s.success()).unwrap_or(false) {
+                        return Some(cand.to_string());
+                    }
+                }
+                None
+            })
+            .expect("sym: no working python3 found. Set SYM_PYTHON.");
+        let mut child = Command::new(&py)
             .arg(format!("{}/bridge/stdio_host.py", root))
             .stdin(Stdio::piped()).stdout(Stdio::piped())
             .spawn().expect("failed to spawn sym host");

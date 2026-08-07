@@ -25,6 +25,20 @@ import os from "node:os";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 
+
+function findPython() {
+  const { execSync } = cpModule;
+  const candidates = [process.env.SYM_PYTHON, "python3", "python"].filter(Boolean);
+  for (const py of candidates) {
+    try {
+      execSync(`${py} -c "import sys; assert sys.version_info >= (3, 8)"`,
+               { stdio: "ignore" });
+      return py;
+    } catch (_) {}
+  }
+  throw new Error("sym: no working python3 found. Set SYM_PYTHON to its path.");
+}
+
 function findRoot() {
   const env = process.env.SYM_HOME;
   if (env && fs.existsSync(path.join(env, "bridge"))) return env;
@@ -37,7 +51,7 @@ function findRoot() {
   }
   try {  // pip-installed core (pip install sym-lang)
     const { execSync } = cpModule;
-    const core = execSync(`python3 -c "import sym_lang, os; print(os.path.join(os.path.dirname(sym_lang.__file__), 'core'))"`,
+    const core = execSync(`${process.env.SYM_PYTHON || "python3"} -c "import sym_lang, os; print(os.path.join(os.path.dirname(sym_lang.__file__), 'core'))"`,
       { encoding: "utf8" }).trim();
     if (fs.existsSync(path.join(core, "bridge"))) return core;
   } catch (_) {}
@@ -47,7 +61,7 @@ function findRoot() {
 class SymClient {
   constructor() {
     const root = findRoot();
-    this.proc = spawn("python3", [path.join(root, "bridge", "stdio_host.py")],
+    this.proc = spawn(findPython(), [path.join(root, "bridge", "stdio_host.py")],
                       { stdio: ["pipe", "pipe", "inherit"] });
     this.rl = createInterface({ input: this.proc.stdout });
     this.pending = new Map();

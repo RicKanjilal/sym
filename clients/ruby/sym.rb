@@ -29,9 +29,17 @@ module Sym
     raise "sym: no Sym found (pip install sym-lang, or set SYM_HOME)"
   end
 
+  def self.python
+    return ENV["SYM_PYTHON"] if ENV["SYM_PYTHON"] && !ENV["SYM_PYTHON"].empty?
+    ["python3", "python", "/usr/bin/python3"].each do |py|
+      return py if system("#{py} -c 'import sys' > /dev/null 2>&1")
+    end
+    raise "sym: no working python3 found. Set SYM_PYTHON."
+  end
+
   def self.ensure_host
     return if @stdin
-    @stdin, @stdout, @wait = Open3.popen2("python3", File.join(root, "bridge", "stdio_host.py"))
+    @stdin, @stdout, @wait = Open3.popen2(python, File.join(root, "bridge", "stdio_host.py"))
     at_exit { close }
   end
 

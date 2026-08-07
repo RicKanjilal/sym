@@ -27,3 +27,4 @@ Thumbs.db
 # Distribution
 *.tar.gz
 !docs/*.tar.gz
+*.class

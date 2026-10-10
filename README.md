@@ -227,10 +227,47 @@ sym run file.sym              # hybrid C+Python (default)
 sym run file.sym -v           # verbose — shows what compiled to C
 sym run file.sym --emit       # show generated code
 sym build -t native file.sym  # standalone binary
-sym check file.sym            # purity analysis report
+sym check file.sym            # purity analysis report (--json for tools)
+sym morph file.sym --to symbol  # convert between modes — lossless or refused
+sym describe java:java.util.ArrayList   # reflect any library in any runtime
+sym glyphs                    # the normal / compact / symbol table
+sym lsp                       # language server (LSP over stdio) for editors
 sym repl                      # interactive REPL
 sym add <pkg>                 # install from any ecosystem
 ```
+
+### The complete symbol table
+
+Every keyword and operator has a spelling in all three modes. `sym morph`
+converts a file token by token — comments, spacing and embedded blocks are
+untouched — then re-parses the result and refuses if the AST changed.
+
+| normal | compact | symbol | | normal | compact | symbol |
+|---|---|---|---|---|---|---|
+| `fn` | `f` | `ƒ` | | `import` | `<<` | `⊂` |
+| `let` | `@` | `∂` | | `from` | `from` | `⊃` |
+| `const` | `const` | `≡` | | `as` | `as` | `↦` |
+| `return` | `<-` | `←` | | `print` | `>>` | `⊕` |
+| `if` / `elif` / `else` | `?` / `??` / `!` | `?` / `??` / `!` | | `struct` | `struct` | `∏` |
+| `for` | `~` | `∀` | | `trait` | `trait` | `◇` |
+| `while` | `~~` | `⟳` | | `impl` | `impl` | `⊢` |
+| `in` | `in` | `∈` | | `async` / `await` | | `⇝` / `⧗` |
+| `break` / `continue` | | `↯` / `↻` | | `and` / `or` / `not` | | `∧` / `∨` / `¬` |
+| `match` | `match` | `⋈` | | `true` / `false` / `none` | | `⊤` / `⊥` / `∅` |
+| `try` / `catch` | | `⊡` / `⊠` | | `->` `<=` `>=` `!=` `=` | | `→` `≤` `≥` `≠` `≔` |
+| `=>` / `\|>` | | `⇒` / `▷` | | `int float bool str list dict` | | `ℤ ℝ 𝔹 𝕊 𝕃 𝔻` |
+
+### Editors
+
+`sym lsp` is a full language server: diagnostics, completion, hover, go-to,
+references, rename, outline, semantic highlighting, inlay hints, code lenses
+showing which functions compile to native C (and why the rest don't), mode
+conversion as a code action, and cross-runtime completion — Java, JS, Ruby,
+PHP, Perl, R and Python members reflected from the real runtime, inside `.sym`
+files *and* inside any `.py`/`.js`/`.rb`/... file that uses a Sym client.
+[Velnor](https://github.com/RicKanjilal/velnor) is the editor built around it.
+Set `SYM_TELEMETRY=/path/to.sock` and the broker streams every worker, call
+and handle as JSON lines.
 
 ## Why I built this
 

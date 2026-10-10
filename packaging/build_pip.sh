@@ -8,7 +8,7 @@ rm -rf "$STAGE"
 mkdir -p "$STAGE/sym_lang/core"
 
 # core payload
-cp -r compiler bridge runtime bin clients examples docs "$STAGE/sym_lang/core/"
+cp -r compiler bridge runtime bin clients examples docs lsp "$STAGE/sym_lang/core/"
 find "$STAGE" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 find "$STAGE" -name "*.class" -delete
 touch "$STAGE/sym_lang/__init__.py"

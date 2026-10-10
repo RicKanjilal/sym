@@ -51,6 +51,25 @@ while (my $line = <STDIN>) {
     eval {
         if ($op eq "ping") { ok_($id, "pong") }
         elsif ($op eq "shutdown") { ok_($id, "bye"); exit 0 }
+        elsif ($op eq "describe") {
+            my $t = $msg->{target};
+            $t =~ s/\./::/g;
+            eval "require $t; 1";
+            no strict 'refs';
+            my $stash = \%{"${t}::"};
+            die "cannot describe '$t'\n" unless %$stash;
+            my @members;
+            for my $name (sort keys %$stash) {
+                next if $name =~ /::$/ || $name =~ /^(BEGIN|END|INIT|CHECK|UNITCHECK|DESTROY|AUTOLOAD|ISA|EXPORT.*|VERSION|import|unimport|__ANON__)$/;
+                if (defined &{"${t}::$name"}) { push @members, { name => $name, kind => "function", signature => "$name(...)", static => \1 } }
+                elsif (defined ${"${t}::$name"}) { push @members, { name => $name, kind => "variable", signature => "\$$name", static => \1 } }
+            }
+            for my $name (sort keys %$stash) {
+                push @members, { name => substr($name, 0, -2), kind => "package", signature => "${t}::" . substr($name, 0, -2), static => \1 }
+                    if $name =~ /::$/;
+            }
+            ok_($id, { kind => "package", name => $t, members => \@members });
+        }
         elsif ($op eq "import") {
             my $t = $msg->{target};
             if (eval "require $t; 1") { ok_($id, { module => $t }) }

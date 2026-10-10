@@ -26,6 +26,27 @@ to_r <- function(x) {
   x
 }
 
+# describe: introspection for editors (Velnor's cross-runtime completion)
+sym_describe <- function(target) {
+  try(sym_import(target), silent = TRUE)
+  ns <- tryCatch(getNamespace(target), error = function(e) NULL)
+  names <- if (!is.null(ns)) getNamespaceExports(target) else ls(globalenv())
+  members <- list()
+  for (n in sort(names)) {
+    obj <- tryCatch(get(n, envir = if (is.null(ns)) globalenv() else ns), error = function(e) NULL)
+    if (is.function(obj)) {
+      f <- formals(obj)
+      args <- if (is.null(f)) "" else paste(ifelse(nchar(sapply(f, deparse)) > 0 & sapply(f, function(x) !identical(x, quote(expr = ))),
+                                                 paste0(names(f), " = …"), names(f)), collapse = ", ")
+      members[[length(members) + 1]] <- list(name = n, kind = "function", signature = paste0(n, "(", args, ")"), static = TRUE)
+    } else {
+      members[[length(members) + 1]] <- list(name = n, kind = "variable", signature = n, static = TRUE)
+    }
+    if (length(members) >= 600) break
+  }
+  list(kind = "package", name = target, members = members)
+}
+
 sym_import <- function(target) {
   # CRAN/library → ./<t>.R → ./rlib/<t>.R
   if (suppressWarnings(require(target, character.only = TRUE, quietly = TRUE)))
@@ -79,6 +100,7 @@ while (TRUE) {
     if (msg$op == "ping") ok(id, "pong")
     else if (msg$op == "shutdown") { ok(id, "bye"); quit(save = "no") }
     else if (msg$op == "import") ok(id, sym_import(msg$target))
+    else if (msg$op == "describe") ok(id, sym_describe(msg$target))
     else if (msg$op == "call") {
       args <- if (is.null(msg$args)) list() else deref_args(msg$args)
       ok(id, to_symbol(sym_call(msg$target, args)))

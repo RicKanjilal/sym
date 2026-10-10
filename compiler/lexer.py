@@ -113,6 +113,10 @@ class Token:
     value: str
     line: int
     col: int
+    start: int = -1   # source offset of first char (code points)
+    end: int = -1     # source offset one past the last char
+    sline: int = 0    # 1-based line where the token starts
+    scol: int = 0     # 1-based column (code points) where the token starts
 
     def __repr__(self):
         return f"Token({self.type.name}, {self.value!r}, L{self.line})"
@@ -133,6 +137,7 @@ NORMAL_KEYWORDS = {
     "true": TT.TRUE, "false": TT.FALSE, "none": TT.NONE,
     "True": TT.TRUE, "False": TT.FALSE, "None": TT.NONE,
     "self": TT.SELF,
+    "async": TT.ASYNC, "await": TT.AWAIT,
 }
 
 COMPACT_KEYWORDS = {
@@ -151,11 +156,26 @@ COMPACT_KEYWORDS = {
 
 # Symbol mode uses Unicode — handled specially in the lexer
 SYMBOL_MAP = {
-    "ƒ": TT.FN, "∂": TT.LET, "←": TT.RETURN, "→": TT.ARROW,
+    # declarations & flow
+    "ƒ": TT.FN, "∂": TT.LET, "≡": TT.CONST, "←": TT.RETURN, "→": TT.ARROW,
+    "∀": TT.FOR, "⟳": TT.WHILE, "∈": TT.IN, "↯": TT.BREAK, "↻": TT.CONTINUE,
+    "⋈": TT.MATCH, "⊡": TT.TRY, "⊠": TT.CATCH,
+    # modules & io
+    "⊂": TT.IMPORT, "⊃": TT.FROM, "↦": TT.AS, "⊕": TT.PRINT,
+    # types & impls
+    "∏": TT.STRUCT, "◇": TT.TRAIT, "⊢": TT.IMPL,
+    # async
+    "⇝": TT.ASYNC, "⧗": TT.AWAIT,
+    # logic & literals
+    "∧": TT.AND, "∨": TT.OR, "¬": TT.NOT,
+    "⊤": TT.TRUE, "⊥": TT.FALSE, "∅": TT.NONE,
+    # operators
     "≤": TT.LTE, "≥": TT.GTE, "≠": TT.NEQ, "≔": TT.ASSIGN,
-    "∀": TT.FOR, "⟳": TT.WHILE, "⊂": TT.IMPORT, "⊕": TT.PRINT,
-    "ℤ": "int", "ℝ": "float", "𝔹": "bool", "𝕊": "str",
+    "⇒": TT.FAT_ARROW, "▷": TT.PIPE,
+    # type names (lex as identifiers)
+    "ℤ": "int", "ℝ": "float", "𝔹": "bool", "𝕊": "str", "𝕃": "list", "𝔻": "dict",
 }
+
 
 
 class Lexer:
@@ -168,6 +188,9 @@ class Lexer:
         self.tokens: List[Token] = []
         self.indent_stack = [0]
         self.mode = "normal"
+        self._tok_start = None
+        self._tok_line = 1
+        self._tok_col = 1
 
     def error(self, msg: str):
         raise SyntaxError(f"{self.filename}:{self.line}:{self.col}: {msg}")
@@ -192,8 +215,21 @@ class Lexer:
             return True
         return False
 
+    _ZERO_WIDTH = (TT.INDENT, TT.DEDENT, TT.NEWLINE, TT.EOF)
+
     def add(self, tt: TT, value: str):
-        self.tokens.append(Token(tt, value, self.line, self.col))
+        # line/col keep their historical meaning (position after the token);
+        # start/end/sline/scol are exact source positions for tooling (LSP, morph).
+        if tt in self._ZERO_WIDTH or self._tok_start is None:
+            if tt == TT.NEWLINE:
+                start, line, col = self.pos, self.line, self.col
+                end = self.pos + 1
+            else:
+                start, line, col, end = self.pos, self.line, self.col, self.pos
+        else:
+            start, line, col, end = self._tok_start, self._tok_line, self._tok_col, self.pos
+            self._tok_start = None
+        self.tokens.append(Token(tt, value, self.line, self.col, start, end, line, col))
 
     def tokenize(self) -> List[Token]:
         # Detect mode from first line
@@ -223,12 +259,14 @@ class Lexer:
         first_line = first_line.strip()
         if first_line == "#compact":
             self.mode = "compact"
+            self._tok_start, self._tok_line, self._tok_col = 0, 1, 1
             self.pos = i + 1 if i < len(self.source) else i
             self.line = 2
             self.col = 1
             self.add(TT.DIRECTIVE, "compact")
         elif first_line == "#symbol":
             self.mode = "symbol"
+            self._tok_start, self._tok_line, self._tok_col = 0, 1, 1
             self.pos = i + 1 if i < len(self.source) else i
             self.line = 2
             self.col = 1
@@ -318,6 +356,7 @@ class Lexer:
             return
 
         ch = self.source[self.pos]
+        self._tok_start, self._tok_line, self._tok_col = self.pos, self.line, self.col
 
         # Comments
         if ch == "#":
@@ -451,6 +490,8 @@ class Lexer:
             if ch == quote:
                 self.advance()
                 break
+            if ch == "\n":
+                self.error("unterminated string (strings end on the line they start)")
             if ch == "{":
                 has_interp = True
             value += self.advance()

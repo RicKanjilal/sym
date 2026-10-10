@@ -21,6 +21,9 @@ import subprocess
 import sys
 import threading
 import weakref
+import time
+
+from bridge import telemetry as _tel
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 _WORKERS_DIR = os.path.join(_ROOT, "bridge", "workers")
@@ -56,8 +59,23 @@ class _Worker:
         resp = self.request({"op": "ping"})
         if resp.get("value") != "pong":
             raise BridgeError(f"[symbridge] {lang} worker failed handshake")
+        _tel.emit("worker_start", lang=lang, worker_pid=self.proc.pid, cmd=os.path.basename(argv[0]))
 
     def request(self, msg: dict) -> dict:
+        if not _tel.enabled() or msg.get("op") == "ping":
+            return self._request(msg)
+        t0 = time.perf_counter()
+        ok = False
+        try:
+            resp = self._request(msg)
+            ok = True
+            return resp
+        finally:
+            _tel.emit("call", lang=self.lang, op=msg.get("op"),
+                      target=msg.get("target") or msg.get("method") or "",
+                      handle=msg.get("handle"), ms=round((time.perf_counter() - t0) * 1000, 3), ok=ok)
+
+    def _request(self, msg: dict) -> dict:
         with self._lock:
             self._id += 1
             msg["id"] = self._id
@@ -88,6 +106,7 @@ class _Worker:
         return resp
 
     def close(self):
+        _tel.emit("worker_exit", lang=self.lang)
         try:
             if self.proc.poll() is None:
                 try:
@@ -162,6 +181,7 @@ class SymBridge:
             if w is None or w.proc.poll() is not None:
                 return
             w.request({"op": "free", "handle": handle_id})
+            _tel.emit("handle_free", lang=lang, id=handle_id)
         except Exception:
             pass
 
@@ -172,11 +192,19 @@ class SymBridge:
         resp = self.worker(lang).request(msg)
         return _from_symbol(resp.get("value"), self, lang)
 
+    def describe(self, lang: str, target: str):
+        """Reflect a library's real surface (members + signatures) — for editors."""
+        resp = self.worker(lang).request({"op": "describe", "target": target})
+        return resp.get("value") or {}
+
     def exec_block(self, lang: str, code: str):
         """Run a  java> { }  /  js> { }  /  go> { }  block. Shared vars flow both ways."""
         if lang in ("go", "rust"):
             from bridge.compiled import run_compiled_block
+            t0 = time.perf_counter()
             value, exports = run_compiled_block(lang, code, _to_symbol(self.shared))
+            _tel.emit("call", lang=lang, op="exec", target="block",
+                      ms=round((time.perf_counter() - t0) * 1000, 3), ok=True)
             for k, v in (exports or {}).items():
                 self.shared[k] = _from_symbol(v)
             return _from_symbol(value)
@@ -185,6 +213,8 @@ class SymBridge:
         exports = resp.get("exports") or {}
         for k, v in exports.items():
             self.shared[k] = _from_symbol(v, self, lang)
+        if exports:
+            _tel.emit("shared", keys=sorted(self.shared.keys())[:200], by=lang)
         return _from_symbol(resp.get("value"), self, lang)
 
 
@@ -203,6 +233,7 @@ class ForeignHandle:
         # freed everything.
         self._finalizer = weakref.finalize(
             self, SymBridge.free_handle, bridge, lang, handle_id)
+        _tel.emit("handle_new", lang=lang, id=handle_id, type=type_name)
 
     def __getattr__(self, name):
         if name.startswith("_"):

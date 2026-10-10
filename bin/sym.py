@@ -280,6 +280,17 @@ def cmd_check(args):
     _compile_sym_deps(src, fp)
     fname = os.path.basename(fp)
 
+    if getattr(args, "json", False):
+        import json as _json
+        from compiler.purity import purity_report
+        try:
+            program = parse(lex(src, fname), fname)
+            from compiler.typecheck import typecheck
+            print(_json.dumps({"ok": True, "functions": purity_report(program), "warnings": typecheck(program)}))
+        except SyntaxError as e:
+            print(_json.dumps({"ok": False, "error": str(e)}))
+            sys.exit(1)
+        return
     try:
         tokens = lex(src, fname)
         program = parse(tokens, fname)
@@ -375,6 +386,52 @@ def _compile_sym_deps(src, fp):
             except Exception as e:
                 print(f"  \u26a0 could not compile module {m}.sym: {e}")
 
+def cmd_lsp(args):
+    from lsp.server import main as lsp_main
+    lsp_main()
+
+
+def cmd_morph(args):
+    from compiler.modes import morph, MorphError
+    src = open(args.file, encoding="utf-8").read()
+    try:
+        out = morph(src, args.to)
+    except MorphError as e:
+        print(f"❌ {e}", file=sys.stderr); sys.exit(1)
+    if args.write:
+        open(args.file, "w", encoding="utf-8").write(out)
+        print(f"  ✅ {args.file} → {args.to} mode")
+    else:
+        sys.stdout.write(out)
+
+
+def cmd_describe(args):
+    import json as _json
+    from bridge.introspect import describe
+    lang, _, target = args.target.partition(":")
+    if not target:
+        lang, target = "python", lang
+    try:
+        res = describe(lang, target, use_cache=not args.fresh)
+    except Exception as e:
+        print(f"❌ {e}", file=sys.stderr); sys.exit(1)
+    if args.json:
+        print(_json.dumps(res, indent=2)); return
+    print(f"  {res.get('kind')} {res.get('name')}  ({len(res.get('members', []))} members)")
+    for m in res.get("members", []):
+        print(f"    {m['kind']:<11} {m.get('signature', m['name'])}")
+
+
+def cmd_glyphs(args):
+    from compiler.modes import glyph_table
+    t = glyph_table()
+    print(f"  {'normal':<10}{'compact':<10}symbol")
+    for r in t["tokens"]:
+        print(f"  {r['normal']:<10}{r['compact']:<10}{r['symbol']}")
+    for r in t["types"]:
+        print(f"  {r['name']:<10}{r['name']:<10}{r['symbol']}")
+
+
 def main():
     p = argparse.ArgumentParser(prog="sym", description="Sym — Python's ecosystem, C's speed.")
     sub = p.add_subparsers(dest="command")
@@ -398,6 +455,21 @@ def main():
     c = sub.add_parser("check", help="Analyze .sym file")
     c.add_argument("file")
     c.set_defaults(func=cmd_check)
+
+    c.add_argument("--json", action="store_true", help="machine-readable purity + diagnostics")
+
+    sub.add_parser("lsp", help="Language server (LSP over stdio) — for editors").set_defaults(func=cmd_lsp)
+    mo = sub.add_parser("morph", help="Convert a file between normal / compact / symbol mode")
+    mo.add_argument("file")
+    mo.add_argument("--to", required=True, choices=["normal", "compact", "symbol"])
+    mo.add_argument("-w", "--write", action="store_true", help="rewrite the file in place")
+    mo.set_defaults(func=cmd_morph)
+    de = sub.add_parser("describe", help="Reflect a library in any runtime: java:java.util.ArrayList, js:lodash, numpy")
+    de.add_argument("target")
+    de.add_argument("--json", action="store_true")
+    de.add_argument("--fresh", action="store_true", help="ignore the cache")
+    de.set_defaults(func=cmd_describe)
+    sub.add_parser("glyphs", help="Print the normal/compact/symbol spelling table").set_defaults(func=cmd_glyphs)
 
     sub.add_parser("repl", help="Interactive REPL").set_defaults(func=cmd_repl)
     sub.add_parser("version", help="Version").set_defaults(func=lambda a: print(BANNER))

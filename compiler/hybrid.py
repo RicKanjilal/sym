@@ -30,6 +30,12 @@ class PurityAnalyzer:
         self.pure_funcs: Set[str] = set()    # functions safe for C
         self.func_deps: Dict[str, Set[str]] = {}  # func → set of called funcs
         self.func_nodes: Dict[str, FunctionDef] = {}
+        self.reasons: Dict[str, Tuple[str, int]] = {}  # func -> (why it stays Python, line)
+
+    def _mark_python(self, fname: str, why: str, line: int = 0):
+        if fname not in self.python_funcs:
+            self.reasons.setdefault(fname, (why, line))
+        self.python_funcs.add(fname)
 
     def analyze(self, program: Program) -> Tuple[List[FunctionDef], List[Node]]:
         """
@@ -63,19 +69,26 @@ class PurityAnalyzer:
                         if hasattr(x, "__dict__"): _scan(x)
             for attr in ("value", "left", "right", "obj", "func", "condition", "expr", "iterable"):
                 v = getattr(n, attr, None)
+                # the direct callee of a call is a call, not a "value" reference —
+                # counting it made every called function look like a callback, so
+                # nothing ever compiled to C.
+                if attr == "func" and isinstance(n, FunctionCall) and isinstance(v, Identifier):
+                    continue
                 if v is not None and hasattr(v, "__dict__"): _scan(v)
-            # don't count the direct callee of a call as a "value" reference
+            for v in (getattr(n, "kwargs", None) or {}).values():
+                if hasattr(v, "__dict__"): _scan(v)
         for stmt in program.statements:
             if hasattr(stmt, "__dict__"): _scan(stmt)
         # a name used as a value but NOT as the callee of a call → callback
         for fname in list(self.func_nodes):
             if fname in _src_names:
-                self.python_funcs.add(fname)
+                self._mark_python(fname, "passed around as a value (callback) — C functions aren't Python callables",
+                                  self.func_nodes[fname].line)
 
         # Mark functions that directly use Python
         for fname, deps in self.func_deps.items():
             if self._uses_python(self.func_nodes[fname]):
-                self.python_funcs.add(fname)
+                self._mark_python(fname, "uses a Python import", self.func_nodes[fname].line)
 
         # Propagate: if a function calls a python func, it's python too
         changed = True
@@ -86,7 +99,7 @@ class PurityAnalyzer:
                     continue
                 for dep in deps:
                     if dep in self.python_funcs:
-                        self.python_funcs.add(fname)
+                        self._mark_python(fname, f"calls {dep}(), which stays Python", self.func_nodes[fname].line)
                         changed = True
                         break
 
@@ -121,7 +134,8 @@ class PurityAnalyzer:
         if isinstance(node, MethodCall):
             # Method calls on py objects → python
             if isinstance(node.obj, Identifier) and node.obj.name in self.python_imports:
-                self.python_funcs.add(func_name)
+                self._mark_python(func_name, f"calls {node.obj.name}.{node.method}() from Python",
+                                  getattr(node, "line", 0))
         # Walk children
         for attr in vars(node).values():
             if isinstance(attr, Node):

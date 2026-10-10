@@ -41,6 +41,49 @@ def fail_(id, e)
   STDOUT.flush
 end
 
+# describe: introspection for editors (Velnor's cross-runtime completion)
+def sym_rb_sig(name, params)
+  args = params.map do |kind, pname|
+    pname ||= "_"
+    case kind
+    when :req then pname.to_s
+    when :opt then "#{pname} = …"
+    when :rest then "*#{pname}"
+    when :keyreq then "#{pname}:"
+    when :key then "#{pname}: …"
+    when :keyrest then "**#{pname}"
+    when :block then "&#{pname}"
+    else pname.to_s
+    end
+  end
+  "#{name}(#{args.join(', ')})"
+end
+
+def sym_describe(target)
+  begin; sym_import(target); rescue StandardError; end
+  const_name = target.split(/::|\./).map { |p| p.split(/[_-]/).map(&:capitalize).join }.join("::")
+  obj = nil
+  [target, const_name, target.upcase, const_name.upcase].each do |c|
+    obj ||= (Object.const_get(c) rescue nil)
+  end
+  raise "cannot describe '#{target}'" unless obj
+  members = []
+  if obj.is_a?(Module)
+    obj.constants.sort.each do |c|
+      v = (obj.const_get(c) rescue nil)
+      members << { name: c.to_s, kind: v.is_a?(Class) ? "class" : (v.is_a?(Module) ? "module" : "constant"),
+                   signature: c.to_s, static: true }
+    end
+    obj.singleton_methods.sort.each do |m|
+      members << { name: m.to_s, kind: "method", signature: sym_rb_sig(m, obj.method(m).parameters), static: true }
+    end
+    obj.public_instance_methods(false).sort.each do |m|
+      members << { name: m.to_s, kind: "method", signature: sym_rb_sig(m, obj.instance_method(m).parameters), static: false }
+    end
+  end
+  { kind: obj.is_a?(Class) ? "class" : "module", name: obj.to_s, members: members.first(600) }
+end
+
 def sym_import(target)
   # gem → ./<t>.rb → ./rblib/<t>.rb → already-loaded constant
   begin
@@ -80,6 +123,7 @@ STDIN.each_line do |line|
     when "ping" then ok(id, "pong")
     when "shutdown" then ok(id, "bye"); exit 0
     when "import" then ok(id, sym_import(msg["target"]))
+    when "describe" then ok(id, sym_describe(msg["target"]))
     when "call" then ok(id, to_symbol(sym_call(msg["target"], deref(msg["args"]))))
     when "new"
       parts = msg["target"].gsub("::", ".").split(".")

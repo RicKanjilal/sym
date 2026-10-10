@@ -41,6 +41,50 @@ function fail($id, $e) {
              "error" => $e->getMessage(), "trace" => $e->getTraceAsString()]);
 }
 
+// describe: reflection for editors (Velnor's cross-runtime completion)
+function sym_php_sig($name, $fn) {
+    $ps = [];
+    foreach ($fn->getParameters() as $p) {
+        $t = $p->hasType() ? $p->getType() . " " : "";
+        $ps[] = $t . ($p->isVariadic() ? "..." : "") . "$" . $p->getName() . ($p->isOptional() && !$p->isVariadic() ? " = …" : "");
+    }
+    $ret = $fn->hasReturnType() ? ": " . $fn->getReturnType() : "";
+    return "$name(" . implode(", ", $ps) . ")$ret";
+}
+
+function sym_describe($target) {
+    try { sym_import($target); } catch (Throwable $e) {}
+    $cls = str_replace(".", "\\", $target);
+    $members = [];
+    if (class_exists($cls) || interface_exists($cls)) {
+        $rc = new ReflectionClass($cls);
+        foreach ($rc->getMethods(ReflectionMethod::IS_PUBLIC) as $m)
+            $members[] = ["name" => $m->getName(), "kind" => $m->isConstructor() ? "constructor" : "method",
+                          "signature" => sym_php_sig($m->getName(), $m), "static" => $m->isStatic()];
+        foreach ($rc->getProperties(ReflectionProperty::IS_PUBLIC) as $p)
+            $members[] = ["name" => $p->getName(), "kind" => "field", "signature" => "$" . $p->getName(), "static" => $p->isStatic()];
+        foreach ($rc->getConstants() as $k => $v)
+            $members[] = ["name" => $k, "kind" => "constant", "signature" => $k, "static" => true];
+        return ["kind" => "class", "name" => $rc->getName(), "members" => $members];
+    }
+    if (function_exists($cls)) {
+        $f = new ReflectionFunction($cls);
+        return ["kind" => "function", "name" => $cls, "members" => [["name" => $cls, "kind" => "function",
+                "signature" => sym_php_sig($cls, $f), "static" => true]]];
+    }
+    // a namespace / extension: list the functions and classes under it
+    $prefix = strtolower(rtrim($cls, "\\"));
+    foreach (get_defined_functions()["internal"] + get_defined_functions()["user"] as $fn) {
+        if ($prefix === "" || strpos($fn, $prefix) === 0 || (extension_loaded($target) && in_array($fn, get_extension_funcs($target) ?: [])))
+            $members[] = ["name" => $fn, "kind" => "function", "signature" => sym_php_sig($fn, new ReflectionFunction($fn)), "static" => true];
+        if (count($members) > 600) break;
+    }
+    foreach (get_declared_classes() as $c)
+        if (stripos($c, $cls) === 0) $members[] = ["name" => $c, "kind" => "class", "signature" => $c, "static" => true];
+    if (!$members) throw new Exception("cannot describe '$target'");
+    return ["kind" => "namespace", "name" => $target, "members" => $members];
+}
+
 function sym_import($target) {
     // resolution: composer autoload → ./<t>.php → ./phplib/<t>.php → builtin ext
     foreach (["vendor/autoload.php"] as $auto)
@@ -76,6 +120,7 @@ while (($line = fgets($stdin)) !== false) {
             case "ping":     ok($id, "pong"); break;
             case "shutdown": ok($id, "bye"); exit(0);
             case "import":   ok($id, sym_import($msg["target"])); break;
+            case "describe": ok($id, sym_describe($msg["target"])); break;
             case "call":     ok($id, to_symbol(sym_call($msg["target"], deref($msg["args"] ?? [])))); break;
             case "new": {
                 $cls = str_replace(".", "\\", $msg["target"]);

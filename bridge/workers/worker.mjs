@@ -39,6 +39,57 @@ async function importModule(target) {
   throw new Error(`cannot import '${target}' (tried npm, ./${target}.js, ./jslib/)`);
 }
 
+// ── describe: introspection for editors (Velnor's cross-runtime completion) ──
+function jsSignature(name, fn) {
+  const src = Function.prototype.toString.call(fn);
+  if (/\{\s*\[native code\]\s*\}/.test(src)) return `${name}(${Array.from({ length: fn.length }, (_, i) => "arg" + i).join(", ")})`;
+  const m = src.match(/^[^(]*\(([^)]*)\)/) || src.match(/^\s*([\w$]+)\s*=>/);
+  const params = m ? m[1].replace(/\s+/g, " ").trim() : "";
+  return `${name}(${params})`;
+}
+function describeValue(name, value) {
+  const members = [];
+  const seen = new Set();
+  const add = (key, v, isStatic) => {
+    if (seen.has(key) || key === "constructor") return; seen.add(key);
+    const t = typeof v;
+    if (t === "function") {
+      const isClass = /^class[\s{]/.test(Function.prototype.toString.call(v));
+      members.push({ name: key, kind: isClass ? "class" : "function", signature: jsSignature(key, v), static: isStatic });
+    } else members.push({ name: key, kind: t === "object" && v !== null ? "namespace" : "constant",
+                          signature: `${key}: ${v === null ? "null" : Array.isArray(v) ? "array" : t}`, static: isStatic });
+  };
+  const own = (obj, isStatic) => {
+    for (const key of Object.getOwnPropertyNames(obj)) {
+      if (/^(length|name|prototype|caller|arguments)$/.test(key) && typeof obj === "function") continue;
+      let v; try { v = obj[key]; } catch { continue; }
+      add(key, v, isStatic);
+    }
+  };
+  if (value && (typeof value === "object" || typeof value === "function")) {
+    own(value, true);
+    if (typeof value === "function" && value.prototype) {
+      let proto = value.prototype;
+      while (proto && proto !== Object.prototype) { own(proto, false); proto = Object.getPrototypeOf(proto); }
+    }
+    if (value.default && typeof value.default === "object") own(value.default, true);
+  }
+  const kind = typeof value === "function" ? (/^class[\s{]/.test(Function.prototype.toString.call(value)) ? "class" : "function") : "module";
+  return { kind, name, members: members.slice(0, 600) };
+}
+async function describe(target) {
+  const parts = target.split(".");
+  for (let i = parts.length; i > 0; i--) {
+    const head = parts.slice(0, i).join(".");
+    let root = modules[head];
+    if (!root) { try { root = await importModule(head); modules[head] = root; } catch { continue; } }
+    const rest = parts.slice(i).join(".");
+    return describeValue(target, rest ? resolvePath(root, rest) : root);
+  }
+  if (target in globalThis) return describeValue(target, globalThis[target]);
+  throw new Error(`cannot describe '${target}'`);
+}
+
 function resolvePath(root, dotted) {
   let obj = root;
   for (const part of dotted.split(".")) {
@@ -57,6 +108,8 @@ rl.on("line", async (line) => {
   try {
     if (op === "ping") return ok(id, "pong");
     if (op === "shutdown") { ok(id, "bye"); process.exit(0); }
+
+    if (op === "describe") return ok(id, await describe(msg.target));
 
     if (op === "import") {
       const mod = await importModule(msg.target);

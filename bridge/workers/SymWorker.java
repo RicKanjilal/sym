@@ -37,6 +37,7 @@ public class SymWorker {
                     case "ping":     out.println(ok(idObj, "pong", null)); break;
                     case "shutdown": out.println(ok(idObj, "bye", null)); return;
                     case "import":   out.println(ok(idObj, doImport((String) msg.get("target")), null)); break;
+                    case "describe": out.println(ok(idObj, Describe.describe((String) msg.get("target")), null)); break;
                     case "new":      out.println(ok(idObj, doNew((String) msg.get("target"),
                                         asList(msg.get("args"))), null)); break;
                     case "call":
@@ -145,6 +146,122 @@ public class SymWorker {
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("kind", "package");
         return res;
+    }
+
+    // ── describe: reflection for editors (Velnor's cross-runtime completion) ──
+    static class Describe {
+        static String typeName(Type t) {
+            String n = t.getTypeName();
+            return n.replace("java.lang.", "").replace("java.util.", "");
+        }
+
+        static Map<String, Object> member(String name, String kind, String sig, boolean isStatic, String detail) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("name", name); m.put("kind", kind); m.put("signature", sig);
+            m.put("static", isStatic); if (detail != null) m.put("detail", detail);
+            return m;
+        }
+
+        static Object describe(String target) throws Exception {
+            Class<?> cls = null;
+            try { cls = LOADED.containsKey(target) ? LOADED.get(target) : loadClass(target); }
+            catch (Throwable e) { /* not a class: maybe a package */ }
+            if (cls != null) return describeClass(cls);
+            return describePackage(target);
+        }
+
+        static Object describeClass(Class<?> cls) {
+            List<Object> members = new ArrayList<>();
+            Set<String> seen = new HashSet<>();
+            for (Constructor<?> c : cls.getConstructors()) {
+                StringBuilder sb = new StringBuilder("new(");
+                Parameter[] ps = c.getParameters();
+                for (int i = 0; i < ps.length; i++) { if (i > 0) sb.append(", "); sb.append(typeName(ps[i].getParameterizedType())).append(' ').append(ps[i].getName()); }
+                sb.append(")");
+                if (seen.add(sb.toString())) members.add(member("new", "constructor", sb.toString(), true, cls.getSimpleName()));
+            }
+            Method[] methods = cls.getMethods();
+            Arrays.sort(methods, Comparator.comparing(Method::getName));
+            for (Method m : methods) {
+                if (m.getDeclaringClass() == Object.class && !m.getName().equals("toString") && !m.getName().equals("equals") && !m.getName().equals("hashCode")) continue;
+                StringBuilder sb = new StringBuilder(m.getName()).append('(');
+                Parameter[] ps = m.getParameters();
+                for (int i = 0; i < ps.length; i++) { if (i > 0) sb.append(", "); sb.append(typeName(ps[i].getParameterizedType())).append(' ').append(ps[i].getName()); }
+                sb.append(") -> ").append(typeName(m.getGenericReturnType()));
+                if (seen.add(sb.toString()))
+                    members.add(member(m.getName(), "method", sb.toString(), Modifier.isStatic(m.getModifiers()),
+                            m.getDeclaringClass().getSimpleName()));
+            }
+            for (Field f : cls.getFields())
+                members.add(member(f.getName(), f.isEnumConstant() ? "enum" : "field",
+                        f.getName() + ": " + typeName(f.getGenericType()), Modifier.isStatic(f.getModifiers()), null));
+            for (Class<?> c : cls.getClasses())
+                members.add(member(c.getSimpleName(), "class", c.getName(), true, null));
+            Map<String, Object> res = new LinkedHashMap<>();
+            res.put("kind", cls.isInterface() ? "interface" : (cls.isEnum() ? "enum" : "class"));
+            res.put("name", cls.getName());
+            res.put("members", members);
+            return res;
+        }
+
+        static Object describePackage(String pkg) throws Exception {
+            String prefix = pkg.replace('.', '/') + "/";
+            TreeSet<String> classes = new TreeSet<>(), packages = new TreeSet<>();
+            java.util.function.Consumer<String> take = entry -> {
+                if (!entry.startsWith(prefix)) return;
+                String rest = entry.substring(prefix.length());
+                int slash = rest.indexOf('/');
+                if (slash > 0) packages.add(rest.substring(0, slash));
+                else if (rest.endsWith(".class") && !rest.contains("$") && !rest.equals("package-info.class") && !rest.equals("module-info.class"))
+                    classes.add(rest.substring(0, rest.length() - 6));
+            };
+            List<String> cp = new ArrayList<>(Arrays.asList(System.getProperty("java.class.path", "").split(File.pathSeparator)));
+            cp.add("."); cp.add("javalib");
+            for (String entry : cp) {
+                if (entry.isEmpty()) continue;
+                File f = new File(entry);
+                if (f.isFile() && entry.endsWith(".jar")) {
+                    try (java.util.jar.JarFile jar = new java.util.jar.JarFile(f)) {
+                        Enumeration<java.util.jar.JarEntry> en = jar.entries();
+                        while (en.hasMoreElements()) take.accept(en.nextElement().getName());
+                    } catch (IOException ignored) {}
+                } else if (f.isDirectory()) {
+                    File dir = new File(f, prefix);
+                    String[] names = dir.list();
+                    if (names != null) for (String n : names) {
+                        File c = new File(dir, n);
+                        if (c.isDirectory()) packages.add(n);
+                        else if (n.endsWith(".class") || n.endsWith(".java")) {
+                            String base = n.substring(0, n.lastIndexOf('.'));
+                            if (!base.contains("$")) classes.add(base);
+                        }
+                    }
+                }
+            }
+            // the JDK itself (java.*, javax.*, ...) lives in the jrt:/ filesystem
+            try {
+                FileSystem jrt = FileSystems.getFileSystem(java.net.URI.create("jrt:/"));
+                try (DirectoryStream<Path> mods = Files.newDirectoryStream(jrt.getPath("/modules"))) {
+                    for (Path mod : mods) {
+                        Path p = mod.resolve(prefix);
+                        if (!Files.isDirectory(p)) continue;
+                        try (DirectoryStream<Path> ds = Files.newDirectoryStream(p)) {
+                            for (Path c : ds) {
+                                String n = c.getFileName().toString().replace("/", "");
+                                if (Files.isDirectory(c)) packages.add(n);
+                                else if (n.endsWith(".class") && !n.contains("$")) classes.add(n.substring(0, n.length() - 6));
+                            }
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {}
+            List<Object> members = new ArrayList<>();
+            for (String p : packages) members.add(member(p, "package", pkg + "." + p, true, null));
+            for (String c : classes) members.add(member(c, "class", pkg + "." + c, true, null));
+            Map<String, Object> res = new LinkedHashMap<>();
+            res.put("kind", "package"); res.put("name", pkg); res.put("members", members);
+            return res;
+        }
     }
 
     static Object doImport(String target) throws Exception {

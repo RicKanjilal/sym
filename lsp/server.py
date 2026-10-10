@@ -328,6 +328,8 @@ class Server:
                 name = t.value
                 if any(a <= t.start < b for a, b in headers):
                     continue
+                if t.sline in ix.import_lines and ix.ident_def.get(i) is None:
+                    continue
                 if name in SYM_BUILTINS or name in PY_BUILTINS or name in KNOWN_TYPES or name in ix.structs \
                         or name in ("sym", "self", "_") or name.startswith("__"):
                     continue
@@ -1395,7 +1397,7 @@ def _describe_items(desc, lang, instance):
     items = []
     by_name = {}
     for m in desc.get("members", []):
-        if instance and m.get("static") and m["kind"] in ("method", "field"):
+        if instance and (m["kind"] == "constructor" or (m.get("static") and m["kind"] in ("method", "field"))):
             continue
         if not instance and m["kind"] == "method" and m.get("static") is False and desc.get("kind") == "class" \
                 and lang == "java":

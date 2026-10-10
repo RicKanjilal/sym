@@ -100,13 +100,15 @@ class Function:
     doc: str = ""
 
     def signature(self, fn_kw="fn"):
+        glyphs = fn_kw == "ƒ"
+        ty = (lambda t: TYPE_GLYPHS.get(t, t)) if glyphs else (lambda t: t)
         ps = []
         for p in self.params:
-            s = p.name + (f": {p.type}" if p.type else "")
+            s = p.name + (f": {ty(p.type)}" if p.type else "")
             if p.default:
-                s += f" = {p.default}"
+                s += (" ≔ " if glyphs else " = ") + p.default
             ps.append(s)
-        r = f" -> {self.ret}" if self.ret else ""
+        r = ((" → " if glyphs else " -> ") + ty(self.ret)) if self.ret else ""
         return f"{fn_kw} {self.name}({', '.join(ps)}){r}"
 
 
@@ -138,6 +140,7 @@ class Index:
         self.refs: Dict[str, List[int]] = {}   # name -> token indexes
         self.ident_def: Dict[int, Def] = {}    # token index -> resolved def
         self.wildcard_import = False
+        self.import_lines = set()   # lines that are imports: their dotted names aren't variables
         self._build()
         self.program = None
         self.parse_error = None
@@ -516,6 +519,7 @@ class Index:
 
     def _import(self, i, scope):
         toks = self.tokens
+        self.import_lines.add(toks[i].sline)
         name, first, j = self._dotted(i + 1)
         if not name:
             return i + 1
@@ -536,6 +540,7 @@ class Index:
 
     def _from_import(self, i, scope):
         toks = self.tokens
+        self.import_lines.add(toks[i].sline)
         name, first, j = self._dotted(i + 1)
         target = name[3:] if name.startswith("py.") else name
         if j < len(toks) and toks[j].type == TT.IMPORT:
@@ -558,6 +563,7 @@ class Index:
 
     def _bridge_import(self, i, scope):
         toks = self.tokens
+        self.import_lines.add(toks[i].sline)
         lang = toks[i].value
         name, first, j = self._dotted(i + 3)
         if not name:

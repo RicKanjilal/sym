@@ -261,6 +261,11 @@ def main():
     check("embedded js block region", len(regs) == 1 and regs[0]["lang"] == "js" and regs[0]["bodyRange"]["start"]["line"] == 1, regs)
     pd = c.wait_note("textDocument/publishDiagnostics", puri)["diagnostics"]
     check("no diagnostics leak from inside a js> block", not pd, pd)
+    iuri = "file:///tmp/velnor_imports.sym"
+    imp = 'java.import math.Calculator\njava.import java.lang.Math as JMath\njs.import textkit\nlet a = Calculator.add(5, 8)\nlet p = JMath.pow(2, 3)\nprint textkit.shout("x")\n'
+    c.notify("textDocument/didOpen", {"textDocument": {"uri": iuri, "languageId": "sym", "version": 1, "text": imp}})
+    idg = c.wait_note("textDocument/publishDiagnostics", iuri)["diagnostics"]
+    check("bridge imports produce no false 'undefined' warnings", not idg, idg)
 
     # foreign completion: a Python file using Sym
     py = 'import sym\nlst = sym.java("java.util.ArrayList")()\nlst.'

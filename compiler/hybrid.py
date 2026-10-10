@@ -129,13 +129,16 @@ class PurityAnalyzer:
     def _walk_for_calls(self, func_name: str, node):
         if node is None:
             return
+        # expressions carry no line of their own: remember the statement we're inside
+        if getattr(node, "line", 0):
+            self._cur_line = node.line
         if isinstance(node, FunctionCall) and isinstance(node.func, Identifier):
             self.func_deps[func_name].add(node.func.name)
         if isinstance(node, MethodCall):
             # Method calls on py objects → python
             if isinstance(node.obj, Identifier) and node.obj.name in self.python_imports:
                 self._mark_python(func_name, f"calls {node.obj.name}.{node.method}() from Python",
-                                  getattr(node, "line", 0))
+                                  getattr(node, "line", 0) or getattr(self, "_cur_line", 0))
         # Walk children
         for attr in vars(node).values():
             if isinstance(attr, Node):
@@ -185,6 +188,15 @@ class PurityAnalyzer:
         for p in func.params:
             if p.name == "self":
                 return False
+            # C only receives scalars across the ctypes boundary. A list, dict, string or
+            # struct parameter (`clips: list`, `c: Clip`) would compile to C that indexes
+            # memory it was never given — keep the function in Python.
+            ann = (p.type_annotation or "").strip()
+            if ann:
+                base = ann.split("[")[0].split("<")[0].rstrip("?")
+                if base not in _C_SCALARS:
+                    self._mark_python(func.name, f"parameter '{p.name}: {ann}' isn't a C scalar", getattr(func, "line", 0))
+                    return False
         # Check for unsupported constructs
         if self._has_unsupported(func.body):
             return False
@@ -192,7 +204,7 @@ class PurityAnalyzer:
 
     def _has_unsupported(self, body: List[Node]) -> bool:
         for stmt in body:
-            if isinstance(stmt, (StructDef, TraitDef, ImplBlock, TryStatement)):
+            if isinstance(stmt, (StructDef, TraitDef, ImplBlock, TryStatement, RaiseStatement)):
                 return True
             if isinstance(stmt, MatchStatement):
                 return True
@@ -269,7 +281,7 @@ class PurityAnalyzer:
 
     def _has_unsupported(self, body: List[Node]) -> bool:
         for stmt in body:
-            if isinstance(stmt, (StructDef, TraitDef, ImplBlock, TryStatement)):
+            if isinstance(stmt, (StructDef, TraitDef, ImplBlock, TryStatement, RaiseStatement)):
                 return True
             if isinstance(stmt, MatchStatement):
                 return True
@@ -304,6 +316,9 @@ class PurityAnalyzer:
                 if self._has_unsupported(stmt.body):
                     return True
         return False
+
+
+_C_SCALARS = {"int", "i32", "i64", "u8", "u16", "u32", "u64", "float", "f32", "f64", "bool", "byte"}
 
 
 class HybridCodegen:
@@ -455,11 +470,13 @@ void sym_smart_sort_int(int64_t* arr, int64_t n) {
 
             # Generate Python wrapper functions that call C
             for func in pure_funcs:
-                params = [(p.name, p.type_annotation) for p in func.params if p.name != "self"]
-                param_names = [p[0] for p in params]
-                param_str = ", ".join(param_names)
+                params = [p for p in func.params if p.name != "self"]
+                param_str = ", ".join(p.name for p in params)
+                # keep default values on the Python-facing signature: `fn f(a, b = 5)`
+                # must still accept f(1) when the body runs in C
+                sig_str = ", ".join(f"{p.name}={pg.gen_expr(p.default)}" if p.default is not None else p.name for p in params)
 
-                pg.emit(f"def {func.name}({param_str}):")
+                pg.emit(f"def {func.name}({sig_str}):")
                 pg.emit(f"    if _c_lib:")
                 pg.emit(f"        return _c_lib.{func.name}({param_str})")
                 pg.emit(f"    else:")

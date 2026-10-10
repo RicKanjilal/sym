@@ -89,6 +89,14 @@ class Parser:
             return self.parse_decorated_function("benchmark")
         if tok.type == TT.AT and self.peek().type == TT.IDENT:
             return self.parse_decorator_function()
+        if tok.type == TT.IDENT and tok.value == "raise":
+            # soft keyword: `raise ValueError("why")`, `raise e`, or a bare `raise`
+            self.pos += 1
+            value = None
+            if not self.at(TT.NEWLINE, TT.EOF, TT.DEDENT):
+                value = self.parse_expression()
+            self.skip_newlines()
+            return RaiseStatement(value=value, line=tok.line, col=tok.col)
         if tok.type == TT.LET:
             return self.parse_let()
         if tok.type == TT.CONST:
@@ -321,14 +329,27 @@ class Parser:
         catch_var = None
         catch_type = None
         catch_body = []
+        has_catch = False
         if self.maybe(TT.CATCH):
+            has_catch = True
             if self.at(TT.IDENT):
                 catch_var = self.eat(TT.IDENT).value
                 if self.maybe(TT.COLON):
                     catch_type = self.eat(TT.IDENT).value
             self.skip_newlines()
             catch_body = self.parse_block()
-        return TryStatement(body=body, catch_var=catch_var, catch_type=catch_type, catch_body=catch_body, line=tok.line)
+        # `finally` is a soft keyword: runs whether the body succeeded, failed or returned
+        finally_body = []
+        save = self.pos
+        self.skip_newlines()
+        if self.at(TT.IDENT) and self.current().value == "finally":
+            self.pos += 1
+            self.skip_newlines()
+            finally_body = self.parse_block()
+        else:
+            self.pos = save
+        return TryStatement(body=body, catch_var=catch_var, catch_type=catch_type, catch_body=catch_body,
+                            has_catch=has_catch or not finally_body, finally_body=finally_body, line=tok.line)
 
     # ── Imports ────────────────────────────────────────────────
     def parse_import(self) -> ImportStatement:
@@ -518,8 +539,18 @@ class Parser:
 
     def parse_comparison(self) -> Node:
         left = self.parse_range()
-        while self.at(TT.EQ, TT.NEQ, TT.LT, TT.GT, TT.LTE, TT.GTE, TT.IN):
+        while True:
+            # `x not in xs` / `x ¬ ∈ xs`
+            if self.at(TT.NOT) and self.pos + 1 < len(self.tokens) and self.tokens[self.pos + 1].type == TT.IN:
+                self.pos += 2
+                right = self.parse_range()
+                left = BinaryOp(left=left, op="not in", right=right)
+                continue
+            if not self.at(TT.EQ, TT.NEQ, TT.LT, TT.GT, TT.LTE, TT.GTE, TT.IN):
+                break
             op = self.current().value
+            if self.current().type == TT.IN:
+                op = "in"
             self.pos += 1
             right = self.parse_range()
             left = BinaryOp(left=left, op=op, right=right)

@@ -224,10 +224,11 @@ rust> {
 
 ```bash
 sym run file.sym              # hybrid C+Python (default)
+sym run app.sym -- a b        # program arguments (sys.argv); SYM_CALLER_CWD = where you ran it
 sym run file.sym -v           # verbose — shows what compiled to C
 sym run file.sym --emit       # show generated code
 sym build -t native file.sym  # standalone binary
-sym check file.sym            # purity analysis report (--json for tools)
+sym check file.sym            # which functions became C, and why the rest didn't (--json for tools)
 sym morph file.sym --to symbol  # convert between modes — lossless or refused
 sym describe java:java.util.ArrayList   # reflect any library in any runtime
 sym glyphs                    # the normal / compact / symbol table

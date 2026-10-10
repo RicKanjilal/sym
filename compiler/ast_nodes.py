@@ -242,6 +242,12 @@ class TryStatement(Node):
     catch_var: Optional[str] = None
     catch_type: Optional[str] = None
     catch_body: List[Node] = field(default_factory=list)
+    has_catch: bool = True
+    finally_body: List[Node] = field(default_factory=list)
+
+@dataclass
+class RaiseStatement(Node):
+    value: Optional[Node] = None      # `raise` alone re-raises the current exception
 
 @dataclass
 class BreakStatement(Node):

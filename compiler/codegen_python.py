@@ -320,6 +320,8 @@ class PythonCodegen:
             self.gen_try(node)
         elif isinstance(node, ExpressionStatement):
             self.emit(self.gen_expr(node.expr))
+        elif isinstance(node, RaiseStatement):
+            self.emit("raise" if node.value is None else f"raise {self.gen_expr(node.value)}")
         elif isinstance(node, BreakStatement):
             self.emit("break")
         elif isinstance(node, ContinueStatement):
@@ -522,16 +524,23 @@ class PythonCodegen:
         for stmt in node.body:
             self.gen_statement(stmt)
         self.indent -= 1
-        catch_type = node.catch_type or "Exception"
-        catch_var = node.catch_var or "_e"
-        self.emit(f"except {catch_type} as {catch_var}:")
-        self.indent += 1
-        if node.catch_body:
-            for stmt in node.catch_body:
+        if getattr(node, "has_catch", True):
+            catch_type = node.catch_type or "Exception"
+            catch_var = node.catch_var or "_e"
+            self.emit(f"except {catch_type} as {catch_var}:")
+            self.indent += 1
+            if node.catch_body:
+                for stmt in node.catch_body:
+                    self.gen_statement(stmt)
+            else:
+                self.emit("pass")
+            self.indent -= 1
+        if getattr(node, "finally_body", None):
+            self.emit("finally:")
+            self.indent += 1
+            for stmt in node.finally_body:
                 self.gen_statement(stmt)
-        else:
-            self.emit("pass")
-        self.indent -= 1
+            self.indent -= 1
 
     # ── Expressions ────────────────────────────────────────────
     def gen_expr(self, node: Node) -> str:
@@ -567,7 +576,7 @@ class PythonCodegen:
             left = self.gen_expr(node.left)
             right = self.gen_expr(node.right)
             # Translate symbol-mode operators to Python
-            op_map = {"≠": "!=", "≤": "<=", "≥": ">=", "≔": "="}
+            op_map = {"≠": "!=", "≤": "<=", "≥": ">=", "≔": "=", "∈": "in", "∧": "and", "∨": "or"}
             op = op_map.get(node.op, node.op)
             return f"({left} {op} {right})"
         if isinstance(node, UnaryOp):

@@ -53,17 +53,47 @@ def _cleanup(paths):
             except: pass
 
 
+_PROG_ARGS = []
+
+
 def _run_py(path, cwd, verbose):
     ppath = ROOT + ":" + os.environ.get("PYTHONPATH", "")
     if verbose:
         print(f"  ⚙ Executing...")
         print(f"  {'─' * 40}")
-    r = subprocess.run([sys.executable, path], cwd=cwd, env={**os.environ, "PYTHONPATH": ppath})
+    # the program runs beside its source (so javalib/, jslib/ and _sym_native.so resolve);
+    # SYM_CALLER_CWD tells it where the user actually was
+    env = {**os.environ, "PYTHONPATH": ppath, "SYM_CALLER_CWD": os.environ.get("SYM_CALLER_CWD", os.getcwd())}
+    r = subprocess.run([sys.executable, path, *_PROG_ARGS], cwd=cwd, env=env)
     sys.exit(r.returncode)
+
+
+_RUN_FLAGS = {"-v": "verbose", "--verbose": "verbose", "--python": "python", "--tokens": "tokens",
+              "--ast": "ast", "--emit": "emit", "--keep": "keep"}
+
+
+def _split_program_args(args):
+    """`sym run app.sym -v -- render ep1` → Sym gets -v, the program gets [render, ep1].
+    Without `--`, leading Sym flags are Sym's and everything from the first other word on
+    belongs to the program."""
+    rest = list(getattr(args, "args", []) or [])
+    prog = []
+    if "--" in rest:
+        i = rest.index("--")
+        rest, prog = rest[:i], rest[i + 1:]
+        for a in rest:
+            if a in _RUN_FLAGS: setattr(args, _RUN_FLAGS[a], True)
+            else: prog.append(a)
+        return prog
+    while rest and rest[0] in _RUN_FLAGS:
+        setattr(args, _RUN_FLAGS[rest.pop(0)], True)
+    return rest
 
 
 # ── RUN ────────────────────────────────────────────────────────
 def cmd_run(args):
+    global _PROG_ARGS
+    _PROG_ARGS = _split_program_args(args)
     fp = args.file
     if not os.path.exists(fp):
         print(f"❌ File not found: {fp}"); sys.exit(1)
@@ -314,6 +344,15 @@ def cmd_check(args):
             print(f"     Functions: {total} total")
             print(f"       → C:      {len(pure_names)} ({', '.join(pure_names) if pure_names else 'none'})")
             print(f"       → Python: {py_count}")
+            # say why each one stayed Python — the question everyone asks next
+            try:
+                from compiler.purity import purity_report
+                for f in purity_report(program):
+                    if not f.get("native"):
+                        where = f" (line {f['reason_line']})" if f.get("reason_line") else ""
+                        print(f"         {f['name']}: {f.get('reason') or 'not pure'}{where}")
+            except Exception:
+                pass
         has_cc = _has_cc()
         print(f"     C compiler: {'✅ available' if has_cc else '❌ not found (install gcc)'}")
     except SyntaxError as e:
@@ -364,27 +403,31 @@ def _print_ast(node, indent=0):
             print(f"{pfx}  {k}: {v!r}")
 
 
-def _compile_sym_deps(src, fp):
-    """Auto-compile sibling .sym modules that this file imports."""
+def _compile_sym_deps(src, fp, _seen=None):
+    """Auto-compile the sibling .sym modules this file imports — and theirs, all the way down."""
     import re, os
     from compiler.lexer import Lexer
     from compiler.parser import Parser
     from compiler.codegen_python import generate_python
+    seen = _seen if _seen is not None else {os.path.abspath(fp)}
     d = os.path.dirname(os.path.abspath(fp))
     mods = set(re.findall(r'(?:^|\n)\s*(?:from|import|\u2282)\s+(?:py\.)?([A-Za-z_][A-Za-z0-9_]*)', src))
     for m in mods:
         symp = os.path.join(d, m + ".sym")
         pyp = os.path.join(d, m + ".py")
-        if os.path.exists(symp):
+        if os.path.exists(symp) and os.path.abspath(symp) not in seen:
+            seen.add(os.path.abspath(symp))
             try:
-                s2 = open(symp).read()
+                raw = open(symp).read()
                 from compiler.preprocess import preprocess as _pp
-                s2 = _pp(s2)
+                s2 = _pp(raw)
                 toks = Lexer(s2).tokenize()
                 prog = Parser(toks).parse()
-                open(pyp, "w").write(generate_python(prog))
+                open(pyp, "w").write(generate_python(prog, m + ".sym"))
             except Exception as e:
                 print(f"  \u26a0 could not compile module {m}.sym: {e}")
+                continue
+            _compile_sym_deps(raw, symp, seen)
 
 def cmd_lsp(args):
     from lsp.server import main as lsp_main
@@ -444,6 +487,7 @@ def main():
     r.add_argument("--ast", action="store_true")
     r.add_argument("--emit", action="store_true")
     r.add_argument("--keep", action="store_true")
+    r.add_argument("args", nargs=argparse.REMAINDER, help="arguments for the program (after the file, or after --)")
     r.set_defaults(func=cmd_run)
 
     b = sub.add_parser("build", help="Compile .sym to target")

@@ -335,7 +335,7 @@ def cmd_check(args):
         from compiler.hybrid import PurityAnalyzer
         analyzer = PurityAnalyzer()
         pure_funcs, _ = analyzer.analyze(program)
-        pure_names = [f.name for f in pure_funcs]
+        pure_names = [f.name for f in sorted(pure_funcs, key=lambda f: getattr(f, "line", 0))]  # source order, every run
         total = sum(1 for s in program.statements if isinstance(s, FunctionDef))
         py_count = total - len(pure_names)
 

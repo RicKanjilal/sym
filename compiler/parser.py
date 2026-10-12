@@ -463,6 +463,7 @@ class Parser:
 
     # ── Assignment or Expression ───────────────────────────────
     def parse_assignment_or_expr(self) -> Node:
+        start_line = self.current().line
         expr = self.parse_expression()
         tok = self.current()
         if tok.type == TT.ASSIGN:
@@ -477,7 +478,7 @@ class Parser:
             self.skip_newlines()
             return AssignStatement(target=expr, value=value, op=op, line=tok.line)
         self.skip_newlines()
-        return ExpressionStatement(expr=expr, line=expr.line if hasattr(expr, 'line') else 0)
+        return ExpressionStatement(expr=expr, line=getattr(expr, 'line', 0) or start_line)
 
     # ── Block (indented body) ──────────────────────────────────
     def parse_block(self) -> List[Node]:

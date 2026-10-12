@@ -45,11 +45,14 @@ class _Worker:
                 argv,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=sys.stderr,  # worker diagnostics pass through
+                # worker diagnostics pass through (minus the inspector's banner when debugging)
+                stderr=subprocess.PIPE if any(a.startswith("--inspect") for a in argv) else sys.stderr,
                 cwd=cwd or os.getcwd(),
                 text=True,
                 bufsize=1,
             )
+            if self.proc.stderr is not None:
+                threading.Thread(target=self._quiet_inspector, daemon=True).start()
         except FileNotFoundError:
             raise BridgeError(
                 f"[symbridge] runtime for '{lang}' not found. "
@@ -60,6 +63,15 @@ class _Worker:
         if resp.get("value") != "pong":
             raise BridgeError(f"[symbridge] {lang} worker failed handshake")
         _tel.emit("worker_start", lang=lang, worker_pid=self.proc.pid, cmd=os.path.basename(argv[0]))
+
+    _INSPECTOR_NOISE = ("Debugger listening on", "For help, see: https://nodejs.org", "Debugger attached.",
+                        "Waiting for the debugger to disconnect", "Debugger ending on")
+
+    def _quiet_inspector(self):
+        for line in self.proc.stderr:
+            if not line.startswith(self._INSPECTOR_NOISE):
+                sys.stderr.write(line)
+                sys.stderr.flush()
 
     def request(self, msg: dict) -> dict:
         if not _tel.enabled() or msg.get("op") == "ping":
@@ -139,6 +151,10 @@ class SymBridge:
     def _launch(self, lang: str) -> _Worker:
         if lang in self._LAUNCH:
             argv = self._LAUNCH[lang]()
+            port = os.environ.get("SYMDBG_NODE_PORT")
+            if lang == "js" and port and os.environ.get("SYMDBG_MODE") == "debug":
+                # the editor attaches to Node over the inspector so js> blocks can be stepped
+                argv = [argv[0], f"--inspect=127.0.0.1:{port}"] + argv[1:]
         elif lang == "java":
             _ensure_java_worker_compiled()
             argv = ["java", "-cp", _classpath(), "SymWorker"]
@@ -208,7 +224,11 @@ class SymBridge:
             for k, v in (exports or {}).items():
                 self.shared[k] = _from_symbol(v)
             return _from_symbol(value)
-        resp = self.worker(lang).request(
+        w = self.worker(lang)
+        dbg = sys.modules.get("symdbg")
+        if dbg is not None and getattr(dbg, "DBG", None) is not None and hasattr(dbg.DBG, "wrap_foreign"):
+            code = dbg.DBG.wrap_foreign(lang, code)
+        resp = w.request(
             {"op": "exec", "code": code, "env": _to_symbol(self.shared)})
         exports = resp.get("exports") or {}
         for k, v in exports.items():

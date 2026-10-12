@@ -56,6 +56,9 @@ def _cleanup(paths):
 _PROG_ARGS = []
 
 
+_DBG_MODE = None   # debug | trace | profile — set by `sym run --debug/--trace/--profile`
+
+
 def _run_py(path, cwd, verbose):
     ppath = ROOT + ":" + os.environ.get("PYTHONPATH", "")
     if verbose:
@@ -64,12 +67,18 @@ def _run_py(path, cwd, verbose):
     # the program runs beside its source (so javalib/, jslib/ and _sym_native.so resolve);
     # SYM_CALLER_CWD tells it where the user actually was
     env = {**os.environ, "PYTHONPATH": ppath, "SYM_CALLER_CWD": os.environ.get("SYM_CALLER_CWD", os.getcwd())}
-    r = subprocess.run([sys.executable, path, *_PROG_ARGS], cwd=cwd, env=env)
+    argv = [sys.executable, path, *_PROG_ARGS]
+    if _DBG_MODE:
+        # the program runs under symdbg, which reports in Sym lines to the editor
+        env["SYMDBG_MODE"] = _DBG_MODE
+        argv = [sys.executable, "-m", "runtime.symdbg", path, *_PROG_ARGS]
+    r = subprocess.run(argv, cwd=cwd, env=env)
     sys.exit(r.returncode)
 
 
 _RUN_FLAGS = {"-v": "verbose", "--verbose": "verbose", "--python": "python", "--tokens": "tokens",
-              "--ast": "ast", "--emit": "emit", "--keep": "keep"}
+              "--ast": "ast", "--emit": "emit", "--keep": "keep",
+              "--debug": "debug", "--trace": "trace", "--profile": "profile"}
 
 
 def _split_program_args(args):
@@ -92,8 +101,14 @@ def _split_program_args(args):
 
 # ── RUN ────────────────────────────────────────────────────────
 def cmd_run(args):
-    global _PROG_ARGS
+    global _PROG_ARGS, _DBG_MODE
     _PROG_ARGS = _split_program_args(args)
+    for m in ("debug", "trace", "profile"):
+        if getattr(args, m, False):
+            _DBG_MODE = m
+    # stepping and live values need every line in Python; profiling measures whichever mode runs
+    if _DBG_MODE in ("debug", "trace"):
+        args.python = True
     fp = args.file
     if not os.path.exists(fp):
         print(f"❌ File not found: {fp}"); sys.exit(1)
@@ -487,6 +502,9 @@ def main():
     r.add_argument("--ast", action="store_true")
     r.add_argument("--emit", action="store_true")
     r.add_argument("--keep", action="store_true")
+    r.add_argument("--debug", action="store_true", help="run under the debugger (editor listens on $SYMDBG_ADDR)")
+    r.add_argument("--trace", action="store_true", help="record live values per line ($SYMDBG_OUT)")
+    r.add_argument("--profile", action="store_true", help="time each function ($SYMDBG_OUT)")
     r.add_argument("args", nargs=argparse.REMAINDER, help="arguments for the program (after the file, or after --)")
     r.set_defaults(func=cmd_run)
 

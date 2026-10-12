@@ -227,6 +227,9 @@ sym run file.sym              # hybrid C+Python (default)
 sym run app.sym -- a b        # program arguments (sys.argv); SYM_CALLER_CWD = where you ran it
 sym run file.sym -v           # verbose — shows what compiled to C
 sym run file.sym --emit       # show generated code
+sym run file.sym --debug      # under symdbg: breakpoints + stepping in Sym lines, into js> blocks (editor drives it)
+sym run file.sym --trace      # live values: what each line did, written to $SYMDBG_OUT
+sym run file.sym --profile    # sampling profiler: each function's share of the run
 sym build -t native file.sym  # standalone binary
 sym check file.sym            # which functions became C, and why the rest didn't (--json for tools)
 sym morph file.sym --to symbol  # convert between modes — lossless or refused

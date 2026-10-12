@@ -302,6 +302,21 @@ def main():
                                                 "context": {"diagnostics": mk}}) if mk else []
     check("quick fix rewrites the keyword", any(a["title"] == "Write '<-'" for a in acts), [a["title"] for a in acts])
 
+    # cross-language rename: a Java method used from two Sym files
+    a_uri, b_uri = "file:///tmp/velnor_xa.sym", "file:///tmp/velnor_xb.sym"
+    c.notify("textDocument/didOpen", {"textDocument": {"uri": a_uri, "languageId": "sym", "version": 1,
+             "text": "java.import math.Calculator\nlet calc = Calculator()\nprint calc.add(1, 2)\nlet add = 3\n"}})
+    c.notify("textDocument/didOpen", {"textDocument": {"uri": b_uri, "languageId": "sym", "version": 1,
+             "text": "java.import math.Calculator as C\nprint C.add(4, 5)\njava> {\n  int r = new Calculator().add(1, 1);\n}\n"}})
+    fm = c.request("sym/foreignMember", {"textDocument": {"uri": a_uri}, "position": {"line": 2, "character": 12}})
+    check("foreign member under the cursor", fm and fm["lang"] == "java" and fm["member"] == "add", fm)
+    ren = c.request("textDocument/rename", {"textDocument": {"uri": a_uri}, "position": {"line": 2, "character": 12}, "newName": "plus"})
+    ch = (ren or {}).get("changes", {})
+    check("rename reaches every Sym caller (not the Sym variable `add`)",
+          len(ch.get(a_uri, [])) == 1 and len(ch.get(b_uri, [])) == 2, ch)
+    refs = c.request("sym/foreignReferences", {"lang": "java", "owner": "Calculator", "member": "add"})
+    check("Java side can ask for Sym callers", len([r for r in refs if r["uri"] in (a_uri, b_uri)]) == 3, refs)
+
     c.close()
     print(f"\n{passed}/{passed + failed} passed")
     sys.exit(1 if failed else 0)

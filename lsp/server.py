@@ -1063,13 +1063,112 @@ class Server:
             out.append({"range": doc.range(t.sline, t.scol, t.sline, t.scol + (t.end - t.start)), "kind": 3 if write else 2})
         return out
 
+    # ── cross-language rename ─────────────────────────────────────────
+    # `calc.add(…)` where calc came from `java.import math.Calculator` is a Java method. Renaming
+    # it in Sym renames it everywhere Sym calls it AND tells the editor which source file defines
+    # it; renaming the method in Calculator.java asks us for every Sym caller (sym/foreignReferences).
+    def _foreign_member(self, ix, i):
+        toks = ix.tokens
+        if i is None or i < 2 or toks[i].type != TT.IDENT or toks[i - 1].type != TT.DOT or toks[i - 2].type != TT.IDENT:
+            return None
+        d = ix.resolve(i - 2)
+        if d is None or not d.bridge:
+            return None
+        return {"lang": d.bridge[0], "target": d.bridge[1], "member": toks[i].value}
+
+    @staticmethod
+    def _owner_matches(target, owner):
+        if not owner:
+            return True
+        last = re.split(r"[.:/]", target.rstrip("/"))[-1]
+        last = re.sub(r"\.(js|mjs|cjs|ts|py|rb|php|pl)$", "", last)
+        own = re.sub(r"\.(js|mjs|cjs|ts|py|rb|php|pl|java)$", "", re.split(r"[.:/]", owner)[-1] if "/" in owner else owner.split(".")[-1])
+        return target == owner or last == own
+
+    def foreign_references(self, lang, owner, member):
+        """Every place a .sym file in the workspace uses `member` of a `lang` import (optionally only
+        imports whose target is `owner`), plus whole-word uses inside that language's `lang> { }` blocks."""
+        out = {}
+        open_docs = {d.uri: d for d in self.docs.values()}
+        paths = set(self.workspace_files())
+        for d in open_docs.values():
+            if d.uri.startswith("file://") and d.uri.endswith(".sym"):
+                paths.add(d.uri[7:])
+        word = re.compile(r"(?<![\w$])" + re.escape(member) + r"(?![\w$])")
+        for path in sorted(paths):
+            uri = "file://" + path
+            doc = open_docs.get(uri)
+            if doc is None:
+                try:
+                    with open(path, encoding="utf-8") as f:
+                        doc = Document(uri, f.read())
+                except OSError:
+                    continue
+            try:
+                ix = Index(doc.text, path)
+            except Exception:
+                continue
+            edits = []
+            for k, t in enumerate(ix.tokens):
+                if t.type != TT.IDENT or t.value != member:
+                    continue
+                fm = self._foreign_member(ix, k)
+                if fm and fm["lang"] == lang and self._owner_matches(fm["target"], owner):
+                    edits.append(doc.range(t.sline, t.scol, t.sline, t.scol + (t.end - t.start)))
+            for r in ix.regions:
+                if r["lang"] != lang:
+                    continue
+                body = doc.text[r["body_start"]:r["body_end"]]
+                for m in word.finditer(body):
+                    edits.append(doc.offset_range(r["body_start"] + m.start(), r["body_start"] + m.end()))
+            if edits:
+                out[uri] = edits
+        return out
+
+    def foreign_source(self, lang, target):
+        """The workspace file that defines a foreign import, when it's the user's own code."""
+        root = self.root or os.getcwd()
+        exts = {"java": (".java",), "js": (".js", ".mjs", ".cjs", ".ts"), "python": (".py",), "ruby": (".rb",),
+                "php": (".php",), "perl": (".pl", ".pm"), "go": (".go",), "rust": (".rs",)}.get(lang, ())
+        if not exts:
+            return None
+        if lang in ("js", "ruby", "php", "perl") and ("/" in target or target.startswith(".")):
+            for base in (root,):
+                p = os.path.normpath(os.path.join(base, target))
+                for cand in (p,) + tuple(p + e for e in exts):
+                    if os.path.isfile(cand):
+                        return cand
+        last = target.split(".")[-1] if lang in ("java", "python") else re.split(r"[/:]", target)[-1]
+        names = {last + e for e in exts}
+        if lang == "python":
+            names.add(target.replace(".", "/") + ".py")
+        for dp, dn, fn in os.walk(root):
+            dn[:] = [d for d in dn if not d.startswith(".") and d not in ("node_modules", "target", "__pycache__", "venv", ".venv", "dist", "build")]
+            for f in fn:
+                if f in names:
+                    return os.path.join(dp, f)
+        return None
+
+    def m_sym_foreignReferences(self, p):
+        refs = self.foreign_references(p["lang"], p.get("owner") or "", p["member"])
+        return [{"uri": u, "range": r} for u, rs in refs.items() for r in rs]
+
+    def m_sym_foreignMember(self, p):
+        """What's under the cursor, if it's a foreign member: {lang, target, member, source}."""
+        doc = self.doc(p)
+        ix, i = self._tok_at(doc, p["position"])
+        fm = self._foreign_member(ix, i)
+        if fm:
+            fm["source"] = self.foreign_source(fm["lang"], fm["target"])
+        return fm
+
     def m_textDocument_prepareRename(self, p):
         doc = self.doc(p)
         ix, i = self._tok_at(doc, p["position"])
         if i is None or ix.tokens[i].type != TT.IDENT:
             raise LspError(-32602, "nothing to rename here")
         t = ix.tokens[i]
-        if ix.resolve(i) is None:
+        if ix.resolve(i) is None and not self._foreign_member(ix, i):
             raise LspError(-32602, f"'{t.value}' is not defined in this file")
         return {"range": doc.range(t.sline, t.scol, t.sline, t.scol + (t.end - t.start)), "placeholder": t.value}
 
@@ -1084,6 +1183,10 @@ class Server:
             raise LspError(-32602, f"'{new}' is a keyword in {ix.mode} mode")
         if i is None:
             return None
+        fm = self._foreign_member(ix, i)
+        if fm:
+            refs = self.foreign_references(fm["lang"], fm["target"], fm["member"])
+            return {"changes": {u: [{"range": r, "newText": new} for r in rs] for u, rs in refs.items()}}
         edits = []
         for k in self._same_symbol(ix, i):
             t = ix.tokens[k]

@@ -924,48 +924,59 @@ class Tracer:
 
 # ── profile mode: time per function ──────────────────────────────────────
 class Profiler:
+    """A sampling profiler: every millisecond, look at what the program is doing. Cheap enough
+    that the numbers mean something (a tracing profiler makes recursive Python 30× slower)."""
+    INTERVAL = 0.001
+
     def __init__(self, ch):
         self.ch = ch
-        self.stats = {}     # key → [calls, seconds]
-        self.stack = []
-        self.active = {}    # code → depth (count recursion once)
-        self.lines = {}     # key → def line
+        self.funcs = {}     # "file::name" → samples (inclusive)
+        self.lines = {}     # "file:line" → samples where the program was on that line (self time)
+        self.defs = {}      # "file::name" → def line
+        self.samples = 0
+        self.done = threading.Event()
 
-    def key(self, frame):
-        file, _, lang = location(frame)
-        lm = frame.f_globals.get("__SYM_LINEMAP__") or {}
-        first = frame.f_code.co_firstlineno
-        line = lm.get(first) or lm.get(first + 1) or (first if lang == "python" else def_line(file, frame.f_code.co_name))
-        self.lines[f"{file}::{frame.f_code.co_name}"] = line
-        return f"{file}::{frame.f_code.co_name}"
-
-    def hook(self, frame, event, arg):
-        if event == "call":
-            if not is_user_code(frame.f_code) or frame.f_code.co_name == "<module>":
-                return
-            code = frame.f_code
-            outer = self.active.get(code, 0) == 0
-            self.active[code] = self.active.get(code, 0) + 1
-            self.stack.append((frame, time.perf_counter(), outer))
-        elif event == "return":
-            if self.stack and self.stack[-1][0] is frame:
-                f, t0, outer = self.stack.pop()
-                self.active[f.f_code] -= 1
-                s = self.stats.setdefault(self.key(f), [0, 0.0])
-                s[0] += 1
-                if outer:
-                    s[1] += time.perf_counter() - t0
+    def sample(self, main_id):
+        while not self.done.is_set():
+            time.sleep(self.INTERVAL)
+            frame = sys._current_frames().get(main_id)
+            if frame is None:
+                continue
+            self.samples += 1
+            seen = set()
+            top = True
+            while frame is not None:
+                if is_user_code(frame.f_code):
+                    file, line, lang = location(frame)
+                    if top and line:
+                        k = f"{file}:{line}"
+                        self.lines[k] = self.lines.get(k, 0) + 1
+                        top = False
+                    name = frame.f_code.co_name
+                    if name != "<module>":
+                        key = f"{file}::{name}"
+                        if key not in seen:
+                            seen.add(key)
+                            self.funcs[key] = self.funcs.get(key, 0) + 1
+                            if key not in self.defs:
+                                self.defs[key] = def_line(file, name) if file.endswith(".sym") else frame.f_code.co_firstlineno
+                frame = frame.f_back
 
     def run(self, path, argv):
+        sys.setswitchinterval(0.0005)
+        t = threading.Thread(target=self.sample, args=(threading.get_ident(),), daemon=True)
         t0 = time.perf_counter()
-        sys.setprofile(self.hook)
-        threading.setprofile(self.hook)
+        t.start()
         try:
             run_program(path, argv)
         finally:
-            sys.setprofile(None)
             total = time.perf_counter() - t0
-            res = {"total": total, "functions": {k: {"calls": c, "seconds": s, "line": self.lines.get(k, 0)} for k, (c, s) in self.stats.items()}}
+            self.done.set()
+            t.join(0.5)
+            per = total / max(self.samples, 1)
+            res = {"total": total, "samples": self.samples,
+                   "functions": {k: {"seconds": n * per, "share": n / max(self.samples, 1), "line": self.defs.get(k, 0)} for k, n in self.funcs.items()},
+                   "lines": {k: n * per for k, n in self.lines.items()}}
             self.ch.send({"event": "profile", **res})
             if OUT:
                 with open(OUT, "w") as f:

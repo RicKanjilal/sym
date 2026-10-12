@@ -37,7 +37,7 @@ def session(src, flag, script, bps):
     srv.listen(1)
     srv.settimeout(30)
     env = {**os.environ, "SYMDBG_ADDR": "127.0.0.1:%d" % srv.getsockname()[1], "SYMDBG_OUT": os.path.join(d, "out.json")}
-    proc = subprocess.Popen(SYM + ["run", p, flag], env=env, cwd=d, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    proc = subprocess.Popen(SYM + ["run", p] + flag.split(), env=env, cwd=d, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     c, _ = srv.accept()
     f = c.makefile("r")
     events = []
@@ -98,10 +98,11 @@ def test_trace_records_values():
     assert lines["3"]["hist"][-1] == "← 9"
 
 
-def test_profile_names_sym_functions():
-    _, out, res = session(DEMO, "--profile", [], [])
-    (key, st), = res["functions"].items()
-    assert key.endswith("demo.sym::square") and st["calls"] == 4 and st["line"] == 1
+def test_profile_finds_the_hot_function():
+    src = "fn slow(n: int) -> int\n    let t = 0\n    for i in 0..n\n        t += i % 7\n    return t\n\nprint slow(3000000)\n"
+    _, out, res = session(src, "--profile --python", [], [])
+    (key, st), = [(k, v) for k, v in res["functions"].items() if k.endswith("::slow")]
+    assert st["line"] == 1 and st["share"] > 0.5, res
 
 
 if __name__ == "__main__":

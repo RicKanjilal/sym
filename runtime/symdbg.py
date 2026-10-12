@@ -374,6 +374,8 @@ class Debugger:
     def __init__(self, ch):
         self.ch = ch
         self.breakpoints = {}        # abs file → set(line)
+        self.bp_version = 0
+        self.bp_cache = {}
         self.mode = "run"            # run | in | over | out
         self.origin = None           # (frame id, line) where a step started
         self.origin_depth = 0
@@ -417,9 +419,33 @@ class Debugger:
         return d
 
     def trace_call(self, frame, event, arg):
-        if event == "call" and is_user_code(frame.f_code):
-            return self.trace_local
-        return None
+        if event != "call" or not is_user_code(frame.f_code):
+            return None
+        # running freely: a function with no breakpoint in it needn't be traced line by line —
+        # that's what keeps fib(30) under the debugger from crawling
+        if self.mode == "run" and not self.pause_requested and frame.f_code.co_name != "<module>" and not self.has_bp(frame):
+            return None
+        return self.trace_local
+
+    def has_bp(self, frame):
+        code = frame.f_code
+        key = (code, self.bp_version)
+        hit = self.bp_cache.get(key)
+        if hit is None:
+            file, _, _ = location(frame)
+            bps = self.breakpoints.get(file)
+            if not bps:
+                hit = False
+            else:
+                lm = frame.f_globals.get("__SYM_LINEMAP__")
+                lines = {ln for (_, _, ln) in code.co_lines() if ln is not None}
+                if lm is not None:
+                    lines = {lm[ln] for ln in lines if ln in lm}
+                hit = bool(lines & bps)
+            if len(self.bp_cache) > 5000:
+                self.bp_cache.clear()
+            self.bp_cache[key] = hit
+        return hit
 
     def trace_local(self, frame, event, arg):
         if event == "line":
@@ -495,6 +521,7 @@ class Debugger:
         if cmd == "setBreakpoints":
             f = os.path.abspath(msg.get("file", ""))
             self.breakpoints[f] = set(int(x) for x in msg.get("lines", []))
+            self.bp_version += 1
             return None
         if cmd in ("configurationDone", "start"):
             return "go"
@@ -717,6 +744,7 @@ class Debugger:
             f = os.path.abspath(msg.get("file", ""))
             lines = set(int(x) for x in msg.get("lines", []))
             self.breakpoints[f] = lines
+            self.bp_version += 1
             if f.endswith((".js", ".mjs", ".cjs")) and self.node is not None:
                 self.sync_file_breakpoints(f, lines)
             for url, (file, first) in list(self.js_blocks.items()):
@@ -820,6 +848,10 @@ class Tracer:
         self.budget = float(os.environ.get("SYMDBG_BUDGET", "20"))
         self.off = False
         self.last_flush = 0.0
+        self.calls = {}        # code → calls seen
+        self.saturated = set() # (file, line) of functions called so often we stopped describing them
+
+    CALL_LIMIT = 400
 
     def snapshot(self, frame):
         module_scope = frame.f_code.co_name == "<module>"
@@ -864,6 +896,22 @@ class Tracer:
         if self.off:
             return None
         if event == "call" and is_user_code(frame.f_code):
+            code = frame.f_code
+            if code.co_name != "<module>":
+                n = self.calls.get(code, 0) + 1
+                self.calls[code] = n
+                if n > self.CALL_LIMIT:
+                    # a hot function (fib's recursion): its lines have said what they do; stop
+                    # tracing new calls so the program runs at near full speed
+                    if n == self.CALL_LIMIT + 1:
+                        file, _, _ = location(frame)
+                        lm = frame.f_globals.get("__SYM_LINEMAP__")
+                        for (_, _, ln) in code.co_lines():
+                            sl = lm.get(ln) if lm is not None else ln
+                            if sl:
+                                self.saturated.add((file, sl))
+                                self.dirty.add((file, sl))
+                    return None
             return self.trace_local
         return None
 
@@ -899,6 +947,8 @@ class Tracer:
         for (file, line), e in self.lines.items():
             if keys is not None and (file, line) not in keys:
                 continue
+            if (file, line) in self.saturated:
+                e = dict(e, more=True)
             files.setdefault(file, {})[str(line)] = e
         return files
 

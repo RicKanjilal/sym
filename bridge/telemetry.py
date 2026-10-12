@@ -8,7 +8,7 @@ background thread so a slow or vanished listener never slows a call:
   {"ev": "hello",        "pid", "argv", "t"}
   {"ev": "worker_start", "lang", "worker_pid", "t"}
   {"ev": "worker_exit",  "lang", "t"}
-  {"ev": "call",         "lang", "op", "target", "ms", "ok", "t"}
+  {"ev": "call",         "lang", "op", "target", "ms", "ok", "src", "t"}   src = "file.sym:line"
   {"ev": "handle_new",   "lang", "id", "type", "t"}
   {"ev": "handle_free",  "lang", "id", "t"}
   {"ev": "shared",       "keys", "t"}
@@ -57,10 +57,30 @@ def enabled() -> bool:
     return bool(_PATH) and not _dead
 
 
+def caller():
+    """The Sym line (file:line) that caused this crossing — so an editor can jump to it."""
+    f = sys._getframe(2)
+    for _ in range(14):
+        if f is None:
+            return None
+        lm = f.f_globals.get("__SYM_LINEMAP__")
+        if lm is not None and f.f_lineno in lm:
+            src = f.f_globals.get("__SYM_SRC__") or ""
+            d = os.path.dirname(os.path.abspath(f.f_code.co_filename))
+            return f"{os.path.join(d, os.path.basename(src))}:{lm[f.f_lineno]}"
+        f = f.f_back
+    return None
+
+
 def emit(ev: str, **fields):
     global _q
     if not _PATH or _dead:
         return
+    if ev == "call" and "src" not in fields:
+        try:
+            fields["src"] = caller()
+        except Exception:
+            pass
     if _q is None:
         _q = queue.Queue(maxsize=10000)
         threading.Thread(target=_pump, name="sym-telemetry", daemon=True).start()
